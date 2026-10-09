@@ -1,0 +1,364 @@
+from datetime import date, datetime, time, timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import httpx
+from fastapi import FastAPI, Query
+from fastapi.responses import FileResponse, JSONResponse
+
+app = FastAPI(title="API Carburants")
+
+DATA_URL = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records"
+CARBURANTS = {"gazole", "sp95", "e10", "sp98", "e85", "gplc"}
+HISTO_FILE = Path(__file__).parent / "historique.json"
+SEUIL_FRAICHEUR = 7  # jours : au-delà, le prix est signalé comme périmé
+
+
+def check_params(cp, carburant, lat=None, lon=None):
+    if carburant is None or carburant.lower() not in CARBURANTS:
+        return JSONResponse(
+            {"detail": f"Carburant inconnu. Choix : {', '.join(sorted(CARBURANTS))}."},
+            status_code=400,
+        )
+    if cp and cp.isdigit() and len(cp) == 5:
+        return None
+    if lat is not None and lon is not None:
+        return None
+    return JSONResponse(
+        {"detail": "Indique un code postal (5 chiffres) ou une position (lat, lon)."},
+        status_code=400,
+    )
+
+
+def zone_key(cp, carburant, lat=None, lon=None):
+    if cp:
+        return f"{cp}|{carburant.lower()}"
+    return f"{round(lat, 2)},{round(lon, 2)}|{carburant.lower()}"
+
+
+def haversine(lat1, lon1, lat2, lon2):
+    try:
+        from math import asin, cos, radians, sin, sqrt
+        dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
+        a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+        return round(2 * 6371.0 * asin(sqrt(a)), 1)
+    except TypeError:
+        return None
+
+
+async def fetch_stations(cp, carburant, lat=None, lon=None, dist=10):
+    carb = carburant.lower()
+    prix_col, maj_col = f"{carb}_prix", f"{carb}_maj"
+    geo = lat is not None and lon is not None
+    where = (f'within_distance(geom, geom\'POINT({lon} {lat})\', {dist}km)'
+             if geo else f'cp="{cp}"')
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(DATA_URL, params={"where": where, "limit": 100})
+            r.raise_for_status()
+            results = r.json().get("results", [])
+    except (httpx.TimeoutException, httpx.ConnectError):
+        return None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
+    except httpx.HTTPError:
+        return None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
+
+    stations, ruptures = [], []
+    for x in results:
+        prix, rtype = x.get(prix_col), x.get(f"{carb}_rupture_type")
+        if prix is None:
+            if x.get(f"{carb}_rupture_debut") or rtype:
+                ruptures.append({"adresse": x.get("adresse"), "ville": x.get("ville"), "rupture": rtype})
+            continue
+        j = jours_depuis(x.get(maj_col))
+        ouv = ouvert_actuellement(x.get("horaires"), x.get("horaires_automate_24_24"))
+        serv = x.get("services_service") or []
+        g = x.get("geom") or {}
+        stations.append({"adresse": x.get("adresse"), "ville": x.get("ville"),
+                         "cp": x.get("cp"), "prix": prix, "date": x.get(maj_col),
+                         "lat": g.get("lat"), "lon": g.get("lon"), "jours": j,
+                         "perime": j is not None and j > SEUIL_FRAICHEUR,
+                         "rupture": rtype,
+                         "distance_km": (haversine(lat, lon, g.get("lat"), g.get("lon"))
+                                         if geo and g.get("lat") is not None else None),
+                         "affluence": calc_affluence(ouv, x.get("pop"), len(serv))})
+    stations.sort(key=lambda s: s["prix"])
+    return stations, ruptures, None
+
+
+def jours_depuis(maj):
+    try:
+        dt = datetime.fromisoformat(maj)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (datetime.now(timezone.utc) - dt).days
+    except (TypeError, ValueError):
+        return None
+
+
+def ouvert_actuellement(horaires, automate, now=None):
+    now = now or datetime.now(ZoneInfo("Europe/Paris"))
+    if (automate or "") == "1":
+        return True
+    try:
+        import json
+        h = json.loads(horaires) if isinstance(horaires, str) else horaires
+        jour = next(j for j in h.get("jour", []) if str(j.get("@id")) == str(now.isoweekday()))
+        if jour.get("@ferme") == "1":
+            return False
+        slots = jour.get("horaire")
+        if not slots:
+            return None
+        slots = slots if isinstance(slots, list) else [slots]
+        t = now.hour + now.minute / 60
+        for s in slots:
+            try:
+                oh, om = str(s["@ouverture"]).replace(":", ".").split(".")
+                fh, fm = str(s["@fermeture"]).replace(":", ".").split(".")
+                if int(oh) + int(om) / 60 <= t < int(fh) + int(fm) / 60:
+                    return True
+            except (KeyError, ValueError, IndexError):
+                continue
+        return False
+    except (ValueError, TypeError, StopIteration, AttributeError):
+        return None
+
+
+def calc_affluence(ouvert, pop, nb_services, now=None):
+    if ouvert is False:
+        return {"niveau": "fermé", "ouvert": False}
+    now = now or datetime.now(ZoneInfo("Europe/Paris"))
+    t, wd = now.hour + now.minute / 60, now.isoweekday()
+    pointe = (wd <= 5 and ((7.5 <= t < 9.5) or (12 <= t < 14) or (17 <= t < 19.5))) or \
+             (wd == 6 and ((9.5 <= t < 12.5) or (14 <= t < 18)))
+    creux = t < 6 or t >= 22
+    score = 2 if pointe else (0 if creux else 1)
+    if nb_services >= 5 or pop == "A":
+        score = min(2, score + 1)
+    return {"niveau": ("fluide", "modérée", "dense")[score], "ouvert": ouvert}
+
+
+def load_histo():
+    try:
+        import json
+        return json.loads(HISTO_FILE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def record_histo(cp, carburant, mini, moyenne, lat=None, lon=None):
+    try:
+        import json
+        h = load_histo()
+        key = zone_key(cp, carburant, lat, lon)
+        pts = h.get(key, [])
+        today = date.today().isoformat()
+        entry = {"date": today, "min": mini, "moyenne": moyenne}
+        if pts and pts[-1]["date"] == today:
+            pts[-1] = entry
+        else:
+            pts.append(entry)
+        h[key] = pts[-30:]
+        HISTO_FILE.write_text(json.dumps(h))
+    except OSError:
+        pass
+
+
+def calc_prevision(cp, carburant, lat=None, lon=None):
+    pts = load_histo().get(zone_key(cp, carburant, lat, lon), [])[-7:]
+    if len(pts) < 2:
+        return {"tendance": "inconnu", "variation": 0.0, "points": len(pts),
+                "conseil": "Pas encore assez d'historique, reviens demain."}
+    n = len(pts)
+    xs = list(range(n))
+    ys = [p["min"] for p in pts]
+    mx, my = sum(xs) / n, sum(ys) / n
+    slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / (sum((x - mx) ** 2 for x in xs) or 1)
+    slope = round(slope, 4)
+    variation = round(ys[-1] - ys[0], 3)
+    if slope >= 0.002:
+        tendance, conseil = "hausse", "Fais le plein aujourd'hui, les prix montent."
+    elif slope <= -0.002:
+        tendance, conseil = "baisse", "Tu peux attendre, les prix baissent."
+    else:
+        tendance, conseil = "stable", "Prix stables, fais le plein sans pression."
+    return {"tendance": tendance, "variation": variation, "points": n, "conseil": conseil}
+
+
+def calc_detour(prix_proche, km_proche, prix_loin, km_loin, conso=6.5, plein=50):
+    economie_station = round((prix_proche - prix_loin) * plein, 2)
+    km_extra = max(0.0, km_loin - km_proche)
+    surcout_trajet = round(km_extra * conso / 100 * prix_proche, 2)
+    economie_nette = round(economie_station - surcout_trajet, 2)
+    vaut = economie_nette > 0
+    return {
+        "economie_station": economie_station,
+        "surcout_trajet": surcout_trajet,
+        "economie_nette": economie_nette,
+        "vaut_le_coup": vaut,
+        "message": (
+            f"Oui, le détour te fait gagner {economie_nette:.2f} €."
+            if vaut
+            else "Non, le détour te coûte plus cher en essence qu'il ne rapporte."
+        ),
+    }
+
+
+@app.get("/", include_in_schema=False)
+def index():
+    return FileResponse(
+        Path(__file__).parent / "static" / "index.html",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/api")
+def api_root():
+    return {
+        "nom": "API Carburants — prix les moins chers par code postal",
+        "routes": {
+            "GET /": "interface web",
+            "GET /api": "cette aide",
+            "GET /stations?cp=77270&carburant=gazole": "stations triées + fiabilité + affluence (ouvert, niveau estimé)",
+            "GET /stations?lat=48.95&lon=2.60&dist=10&carburant=gazole": "idem autour d'une position (géolocalisation)",
+            "GET /stations?cp=77270&carburant=gazole&km_proche=2&km_loin=10": "idem + verdict détour (facultatif)",
+            "GET /stations/moins-chere?cp=77270&carburant=gazole": "station la moins chère",
+            "GET /stats?cp=77270&carburant=gazole": "moyenne, min, max, nombre de stations",
+            "GET /detour?prix_proche=1.90&km_proche=2&prix_loin=1.80&km_loin=10&conso=6.5&plein=50": "le détour vaut-il le coup ? (km = aller-retour)",
+            "GET /alertes/check?cp=77270&carburant=gazole&seuil=1.80": "alerte si le prix min passe sous le seuil",
+            "GET /prevision?cp=77270&carburant=gazole": "faut-il faire le plein aujourd'hui ou attendre ?",
+        },
+        "carburants": sorted(CARBURANTS),
+    }
+
+
+@app.get("/stations")
+async def stations(
+    cp: str | None = Query(None),
+    carburant: str = Query(...),
+    lat: float | None = Query(None, ge=-90, le=90),
+    lon: float | None = Query(None, ge=-180, le=180),
+    dist: float = Query(10, gt=0, le=100, description="rayon en km"),
+    km_proche: float | None = Query(None, ge=0, description="Km A/R station proche (cher) — facultatif"),
+    km_loin: float | None = Query(None, ge=0, description="Km A/R station loin (pas cher) — facultatif"),
+    conso: float = Query(6.5, gt=0),
+    plein: float = Query(50, gt=0),
+):
+    err = check_params(cp, carburant, lat, lon)
+    if err:
+        return err
+    data, ruptures, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    if err:
+        return err
+    if not data:
+        return JSONResponse({"detail": "Aucune station trouvée.", "ruptures": ruptures}, status_code=404)
+    resp = {"cp": cp, "carburant": carburant.lower(), "nombre": len(data), "stations": data,
+            "prix_perimes": sum(1 for s in data if s["perime"]), "ruptures": ruptures}
+    if lat is not None and lon is not None:
+        resp["position"] = {"lat": lat, "lon": lon, "dist": dist}
+    if km_proche is not None and km_loin is not None and len(data) >= 1:
+        resp["detour"] = calc_detour(data[-1]["prix"], km_proche, data[0]["prix"], km_loin, conso, plein)
+    return resp
+
+
+@app.get("/stations/moins-chere")
+async def moins_chere(
+    cp: str | None = Query(None), carburant: str = Query(...),
+    lat: float | None = Query(None, ge=-90, le=90),
+    lon: float | None = Query(None, ge=-180, le=180),
+    dist: float = Query(10, gt=0, le=100),
+):
+    err = check_params(cp, carburant, lat, lon)
+    if err:
+        return err
+    data, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    if err:
+        return err
+    if not data:
+        return JSONResponse({"detail": "Aucune station trouvée."}, status_code=404)
+    return {"cp": cp, "carburant": carburant.lower(), "station": data[0]}
+
+
+@app.get("/stats")
+async def stats(
+    cp: str | None = Query(None), carburant: str = Query(...),
+    lat: float | None = Query(None, ge=-90, le=90),
+    lon: float | None = Query(None, ge=-180, le=180),
+    dist: float = Query(10, gt=0, le=100),
+):
+    err = check_params(cp, carburant, lat, lon)
+    if err:
+        return err
+    data, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    if err:
+        return err
+    if not data:
+        return JSONResponse({"detail": "Aucune station trouvée."}, status_code=404)
+    prix = [s["prix"] for s in data]
+    mini, maxi = min(prix), max(prix)
+    record_histo(cp, carburant, mini, round(sum(prix) / len(prix), 3), lat, lon)
+    return {
+        "cp": cp, "carburant": carburant.lower(), "nombre": len(data),
+        "min": mini, "max": maxi,
+        "moyenne": round(sum(prix) / len(prix), 3),
+        "prix_perimes": sum(1 for s in data if s["perime"]),
+    }
+
+
+@app.get("/detour")
+def detour(
+    prix_proche: float = Query(..., gt=0),
+    km_proche: float = Query(..., ge=0),
+    prix_loin: float = Query(..., gt=0),
+    km_loin: float = Query(..., ge=0),
+    conso: float = Query(6.5, gt=0, description="L/100 km"),
+    plein: float = Query(50, gt=0, description="litres"),
+):
+    return calc_detour(prix_proche, km_proche, prix_loin, km_loin, conso, plein)
+
+
+@app.get("/prevision")
+async def prevision(
+    cp: str | None = Query(None), carburant: str = Query(...),
+    lat: float | None = Query(None, ge=-90, le=90),
+    lon: float | None = Query(None, ge=-180, le=180),
+    dist: float = Query(10, gt=0, le=100),
+):
+    err = check_params(cp, carburant, lat, lon)
+    if err:
+        return err
+    data, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    if err:
+        return err
+    if not data:
+        return JSONResponse({"detail": "Aucune station trouvée."}, status_code=404)
+    prix = [s["prix"] for s in data]
+    record_histo(cp, carburant, min(prix), round(sum(prix) / len(prix), 3), lat, lon)
+    prev = calc_prevision(cp, carburant, lat, lon)
+    return {"cp": cp, "carburant": carburant.lower(), "prix_actuel_min": min(prix), **prev}
+
+
+@app.get("/alertes/check")
+async def alertes_check(
+    cp: str | None = Query(None), carburant: str = Query(...), seuil: float = Query(..., gt=0),
+    lat: float | None = Query(None, ge=-90, le=90),
+    lon: float | None = Query(None, ge=-180, le=180),
+    dist: float = Query(10, gt=0, le=100),
+):
+    err = check_params(cp, carburant, lat, lon)
+    if err:
+        return err
+    data, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    if err:
+        return err
+    if not data:
+        return JSONResponse({"detail": "Aucune station trouvée."}, status_code=404)
+    mini = min(s["prix"] for s in data)
+    hit = mini <= seuil
+    return {
+        "cp": cp, "carburant": carburant.lower(), "seuil": seuil,
+        "min": mini, "declenchee": hit,
+        "message": (
+            f"Prix sous le seuil : {mini:.3f} € ≤ {seuil:.3f} €."
+            if hit else f"Pas encore : min {mini:.3f} € > seuil {seuil:.3f} €."
+        ),
+    }
