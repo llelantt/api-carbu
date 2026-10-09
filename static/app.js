@@ -121,8 +121,23 @@ function renderList() {
   }));
   drawPlan(arr);
 }
+export function shouldUseLeaflet({ mode, hasL, tilesOK, online }) {
+  return mode === 'carte' && !!hasL && tilesOK !== false && online !== false;
+}
+let tilesOK = true, tileErrs = 0;
+function showMapWarn() {
+  const w = document.getElementById('mapwarn');
+  w.textContent = 'Carte indisponible (hors ligne ou tuiles injoignables) — plan schématique affiché.';
+  w.hidden = false;
+}
 function drawPlan(arr) {
-  if (mode === 'carte' && typeof window !== 'undefined' && window.L) { drawLeaflet(arr); return; }
+  const online = typeof navigator !== 'undefined' ? navigator.onLine : undefined;
+  const hasL = typeof window !== 'undefined' && !!window.L;
+  if (shouldUseLeaflet({ mode, hasL, tilesOK, online })) {
+    document.getElementById('mapwarn').hidden = true;
+    drawLeaflet(arr); return;
+  }
+  if (mode === 'carte') showMapWarn(); else document.getElementById('mapwarn').hidden = true;
   const el = document.getElementById('map');
   const pts = arr.map((x, i) => ({ ...x, _i: i })).filter(x => x.lat != null && x.lon != null);
   if (!pts.length) { el.hidden = true; return; }
@@ -166,11 +181,20 @@ function drawLeaflet(arr) {
   if (!pts.length) { el.hidden = true; return; }
   el.hidden = false;
   if (!lmap) {
-    lmap = window.L.map('map');
-    window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const coarse = window.matchMedia('(pointer: coarse)').matches;
+    lmap = window.L.map('map', { dragging: !coarse, tap: !coarse, touchZoom: true, scrollWheelZoom: false });
+    const tl = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(lmap);
+    });
+    tl.on('tileerror', () => {
+      if (++tileErrs >= 4 && tilesOK) {
+        tilesOK = false;
+        showMapWarn();
+        if (lastS) drawPlan(sortedStations());
+      }
+    });
+    tl.addTo(lmap);
   }
   if (llayer) llayer.clearLayers(); else llayer = window.L.layerGroup().addTo(lmap);
   const pr0 = pts.map(o => o.x.prix), mn0 = Math.min(...pr0), mx0 = Math.max(...pr0);
@@ -261,6 +285,7 @@ if (hasDOM) {
     ctl = new AbortController(); const my = ++req, sig = ctl.signal;
     const btn = f.querySelector('button[type="submit"]'); btn.disabled = true;
     box.innerHTML = ''; cards.hidden = true; document.getElementById('detour').hidden = true; sel = null;
+    tilesOK = true; tileErrs = 0; document.getElementById('mapwarn').hidden = true;
     document.getElementById('notif').hidden = true; document.getElementById('prev').hidden = true;
     document.getElementById('map').hidden = true;
     msg.textContent = 'Recherche en cours…'; msg.className = '';

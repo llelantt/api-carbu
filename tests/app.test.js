@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, project, priceColor, markerClass,
+  esc, pf, pf2, project, priceColor, markerClass, shouldUseLeaflet,
   stationsHTML, planSVG, errorText,
 } from '../static/app.js';
 
@@ -108,6 +108,19 @@ describe('planSVG', () => {
     );
     expect(svg).toContain('cx="290.0"');
     expect(svg).toContain('Toi');
+  });
+});
+
+describe('shouldUseLeaflet', () => {
+  const ok = { mode: 'carte', hasL: true, tilesOK: true, online: true };
+  it('carte si tout est disponible', () => {
+    expect(shouldUseLeaflet(ok)).toBe(true);
+  });
+  it('repli SVG si Leaflet, tuiles ou réseau manque', () => {
+    expect(shouldUseLeaflet({ ...ok, mode: 'plan' })).toBe(false);
+    expect(shouldUseLeaflet({ ...ok, hasL: false })).toBe(false);
+    expect(shouldUseLeaflet({ ...ok, tilesOK: false })).toBe(false);
+    expect(shouldUseLeaflet({ ...ok, online: false })).toBe(false);
   });
 });
 

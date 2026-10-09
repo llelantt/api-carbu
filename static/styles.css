@@ -86,9 +86,14 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .fuels{display:grid;gap:4px}
 .fuel{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:.9rem;font-weight:600}
 .curve svg{width:100%;height:auto;display:block}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.92)}
+}
+:root[data-theme="dark"] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.92)}
 @media(max-width:560px){
   .cards{grid-template-columns:1fr 1fr 1fr}
   .card .val{font-size:1.1rem}
   form{flex-direction:column}
+  #map{height:260px}
 }
 @media(prefers-reduced-motion:no-preference){.st{transition:box-shadow .15s}}
