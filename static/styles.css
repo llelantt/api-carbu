@@ -24,6 +24,9 @@ h2{font:700 20px "Barlow Semi Condensed",Barlow,system-ui,sans-serif;margin:28px
 .sub{color:var(--mut);margin:0 0 20px;font-size:.9rem}
 form,.card,.st{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
 form{display:flex;gap:8px;flex-wrap:wrap}
+form>label{flex:1;min-width:140px;display:grid;gap:3px;font-weight:600;font-size:13px;color:var(--mut)}
+.row{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row label,#geo label{display:grid;gap:3px;font-weight:600;font-size:13px;color:var(--mut)}
 input,select{flex:1;min-width:140px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:1rem;color:var(--ink)}
 button{font:inherit;cursor:pointer}
 button[type="submit"]{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 20px;font-size:1rem;font-weight:600}
