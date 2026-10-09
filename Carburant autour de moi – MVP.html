@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Carburant autour de moi – MVP</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#eef1f4;--card:#fff;--ink:#14202b;--mut:#5b6b78;--line:#d5dce2;--acc:#1b5fd6;--board:#10161c;--led:#ffb703}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e141a;--card:#17202a;--ink:#e8eef3;--mut:#93a3b0;--line:#27333f;--acc:#6ea0ff}}
+:root[data-theme="dark"]{--bg:#0e141a;--card:#17202a;--ink:#e8eef3;--mut:#93a3b0;--line:#27333f;--acc:#6ea0ff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 Barlow,system-ui,-apple-system,"Segoe UI",sans-serif}
+.app{max-width:1100px;margin:0 auto;padding:16px;display:grid;gap:14px;grid-template-columns:minmax(0,360px) minmax(0,1fr);grid-template-areas:"hd hd" "ct best" "ls map"}
+@media(max-width:820px){.app{grid-template-columns:minmax(0,1fr);grid-template-areas:"hd" "ct" "best" "map" "ls"}}
+h1{grid-area:hd;margin:0;font:700 28px/1.1 "Barlow Semi Condensed",Barlow,sans-serif}
+h1 small{display:block;font:400 14px Barlow,sans-serif;color:var(--mut);margin-top:6px}
+.warn{background:#fff3cd;color:#5c4400;border-radius:8px;padding:6px 10px;font-size:13px;margin-top:8px;display:block}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+#ct{grid-area:ct;display:grid;gap:10px}
+label{display:grid;gap:3px;font-weight:600;font-size:13px;color:var(--mut)}
+label span b{color:var(--ink)}
+select,input,button{font:inherit;color:var(--ink)}
+select,input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button{cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible,circle:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-weight:600}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}
+.tabs button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+#best{grid-area:best;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+#best h2{margin:0;font:700 20px "Barlow Semi Condensed",sans-serif}
+#best p{margin:2px 0 0;color:var(--mut)}
+#best .ok{color:#1f9d55;font-weight:600}
+#map{grid-area:map;padding:8px}
+#map svg{width:100%;height:auto;display:block}
+#ls{grid-area:ls;display:grid;gap:8px;align-content:start;padding:8px}
+.it{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+.it[aria-current=true]{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
+.rk{font:700 16px "Barlow Semi Condensed",sans-serif;color:var(--mut);width:22px}
+.nm{font-weight:600}.sb{font-size:13px;color:var(--mut)}
+.led{background:var(--board);color:var(--led);font:700 22px/1 "Barlow Semi Condensed",sans-serif;letter-spacing:.04em;padding:7px 10px;border-radius:6px;font-variant-numeric:tabular-nums;text-align:center}
+.led small{font-size:11px;opacity:.8;margin-left:2px}
+.tot{font-size:12px;color:var(--mut);text-align:right;margin-top:3px}
+.empty{padding:16px;color:var(--mut)}
+@media(prefers-reduced-motion:no-preference){circle{transition:r .15s}}
+</style></head><body>
+<main class="app">
+<h1>Carburant autour de moi<small>Trouve la station la moins chère, détour compris.</small><span class="warn">Démo : stations et prix fictifs. Branchement prévu sur le flux officiel prix-carburants.gouv.fr (mis à jour toutes les 10 min).</span></h1>
+
+<section id="ct" class="box" aria-label="Réglages">
+<div class="row">
+<label>Carburant<select id="fuel"></select></label>
+<label>Ville de départ<select id="city"></select></label>
+</div>
+<button class="btn" id="geo" type="button">Me localiser</button>
+<label><span>Rayon : <b id="vr"></b> km</span><input id="rad" type="range" min="2" max="25" value="10"></label>
+<div class="row">
+<label>Plein (litres)<input id="lit" type="number" min="5" max="120" value="40"></label>
+<label>Conso (L/100 km)<input id="con" type="number" min="2" max="25" step="0.1" value="6.5"></label>
+</div>
+<div class="tabs" role="group" aria-label="Trier par">
+<button type="button" data-s="tot" aria-pressed="true">Coût réel</button>
+<button type="button" data-s="pr" aria-pressed="false">Prix au litre</button>
+<button type="button" data-s="d" aria-pressed="false">Distance</button>
+</div>
+<div id="msg" class="sb" role="status"></div>
+</section>
+
+<section id="best" class="box" aria-live="polite"></section>
+<section id="map" class="box"></section>
+<section id="ls" class="box" aria-label="Classement des stations"></section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const FUELS={'Gazole':1.72,'SP95-E10':1.78,'SP98':1.89,'E85':.82,'GPLc':.99};
+const BR=[['E.Leclerc',-.09],['Intermarché',-.06],['Carrefour',-.05],['Système U',-.05],['Auchan',-.05],['Avia',-.01],['Esso',.03],['BP',.04],['TotalEnergies',.06]];
+const ZN=['Centre-ville','Zone commerciale','Route nationale','Sortie de rocade','Près de la gare','Zone industrielle','Bourg'];
+const CITIES={'Cherbourg':[49.64,-1.62],'Caen':[49.18,-.37],'Rouen':[49.44,1.1],'Paris':[48.86,2.35],'Lyon':[45.76,4.84]};
+let center=CITIES.Cherbourg,ST=[],sel=null,sort='tot',view=[];
+const eur=n=>n.toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
+const pf=n=>n.toFixed(3).replace('.',',');
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gen(){
+  const r=rng(Math.round(center[0]*100)*1000+Math.round(center[1]*100)+7);
+  ST=[];
+  for(let i=0;i<46;i++){
+    const b=BR[Math.floor(r()*BR.length)],j=(r()-.5)*.05,p={};
+    for(const f in FUELS){
+      const rare=f==='E85'||f==='GPLc';
+      p[f]=rare&&r()>.35?null:Math.round((FUELS[f]+b[1]+j+(r()-.5)*.03)*1000)/1000;
+    }
+    ST.push({id:i,n:b[0],z:ZN[Math.floor(r()*ZN.length)],d:Math.sqrt(r())*25,a:r()*6.2832,p});
+  }
+}
+function calc(){
+  const f=$('#fuel').value,R=+$('#rad').value,L=+$('#lit').value||0,c=+$('#con').value||0;
+  return ST.filter(s=>s.d<=R&&s.p[f]).map(s=>{
+    const pr=s.p[f];return{...s,pr,tot:L*pr+2*s.d*1.3*c/100*pr};
+  });
+}
+function draw(){
+  $('#vr').textContent=$('#rad').value;
+  const R=+$('#rad').value;
+  view=calc().sort((a,b)=>a[sort]-b[sort]);
+  if(!view.length){
+    $('#best').innerHTML='<div class="empty">Aucune station dans ce rayon pour ce carburant. Élargis le rayon.</div>';
+    $('#map').innerHTML='';$('#ls').innerHTML='';return;
+  }
+  const byTot=[...view].sort((a,b)=>a.tot-b.tot),best=byTot[0];
+  const near=[...view].sort((a,b)=>a.d-b.d)[0],gain=near.tot-best.tot;
+  $('#best').innerHTML=`<div class="led">${pf(best.pr)}<small>€/L</small></div><div><h2>${best.n} · ${best.z}</h2><p>À ${best.d.toFixed(1).replace('.',',')} km · plein de ${$('#lit').value} L = <b>${eur(best.tot)}</b> détour inclus</p><p class="${gain>0.005?'ok':''}">${gain>0.005?'Économie de '+eur(gain)+' face à la station la plus proche':'C’est aussi la station la plus proche ou équivalente'}</p></div>`;
+  const pr=view.map(s=>s.pr),mn=Math.min(...pr),mx=Math.max(...pr);
+  const col=s=>`hsl(${Math.round(140-140*(s.pr-mn)/((mx-mn)||1))} 70% 42%)`;
+  const ring=k=>`<circle cx="200" cy="200" r="${180*k}" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${200+180*k*.707+3}" y="${200-180*k*.707}" font-size="10" fill="var(--mut)">${Math.round(R*k)} km</text>`;
+  let m=`<svg viewBox="0 0 400 400" role="img" aria-label="Plan des stations autour du point de départ">${ring(1/3)}${ring(2/3)}${ring(1)}<circle cx="200" cy="200" r="6" fill="var(--ink)"/><text x="208" y="204" font-size="11" fill="var(--ink)">Toi</text>`;
+  [...view].reverse().forEach(s=>{
+    const x=200+Math.sin(s.a)*s.d/R*180,y=200-Math.cos(s.a)*s.d/R*180,isB=s.id===best.id,on=s.id===sel;
+    m+=`<circle data-id="${s.id}" tabindex="0" role="button" aria-label="${s.n}, ${pf(s.pr)} euros le litre" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${isB||on?10:7}" fill="${col(s)}" stroke="${on?'var(--acc)':isB?'var(--ink)':'var(--card)'}" stroke-width="${on||isB?3:1.5}"/>`;
+  });
+  $('#map').innerHTML=m+'</svg>';
+  $('#ls').innerHTML=view.map((s,i)=>`<button class="it" type="button" data-id="${s.id}" ${s.id===sel?'aria-current="true"':''}><span class="rk">${i+1}</span><span><span class="nm">${s.n}</span><br><span class="sb">${s.z} · ${s.d.toFixed(1).replace('.',',')} km</span></span><span><div class="led">${pf(s.pr)}</div><div class="tot">${eur(s.tot)}</div></span></button>`).join('');
+}
+function pick(e){const t=e.target.closest('[data-id]');if(t){sel=+t.dataset.id;draw()}}
+$('#map').addEventListener('click',pick);
+$('#ls').addEventListener('click',pick);
+$('#map').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(e)}});
+['fuel','rad','lit','con'].forEach(i=>$('#'+i).addEventListener('input',draw));
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  sort=b.dataset.s;document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));draw();
+}));
+$('#fuel').innerHTML=Object.keys(FUELS).map(f=>`<option>${f}</option>`).join('');
+$('#city').innerHTML=Object.keys(CITIES).map(c=>`<option>${c}</option>`).join('')+'<option value="">Ma position</option>';
+$('#city').addEventListener('change',e=>{if(CITIES[e.target.value]){center=CITIES[e.target.value];sel=null;gen();draw()}});
+$('#geo').addEventListener('click',()=>{
+  const msg=$('#msg');
+  try{
+    navigator.geolocation.getCurrentPosition(p=>{
+      center=[p.coords.latitude,p.coords.longitude];$('#city').value='';sel=null;gen();draw();msg.textContent='Position utilisée (stations toujours fictives).';
+    },()=>{msg.textContent='Localisation indisponible : choisis une ville dans la liste.'});
+  }catch(e){msg.textContent='Localisation indisponible : choisis une ville dans la liste.'}
+});
+gen();draw();
+</script></body></html>
