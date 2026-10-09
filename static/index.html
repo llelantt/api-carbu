@@ -114,7 +114,7 @@ return a;}
 function renderList(){
 const arr=sortedStations(),mn=lastT.min;
 box.innerHTML=arr.map((x,i)=>`
-<div class="st" data-i="${i}"><div class="top"><span class="rk">${i+1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
+<div class="st" data-i="${i}" tabindex="0" role="button" aria-expanded="false"><div class="top"><span class="rk">${i+1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
 ${x.prix===mn?'<span class="badge">Meilleur prix</span>':''}</div>
 <div><b>${x.adresse||'Adresse inconnue'}</b></div>
 <div class="addr">${x.ville||''}${x.distance_km!=null?` · à ${String(x.distance_km).replace('.',',')} km`:''} · ${x.date?new Date(x.date).toLocaleDateString('fr-FR'):''}${x.jours!=null?` · il y a ${x.jours} j`:''}</div>
@@ -130,7 +130,9 @@ ${(x.services||[]).length?`<div class="fiab">${x.services.map(s=>`<span class="b
 </div>`).join('');
 box.querySelectorAll('.st').forEach(el=>el.addEventListener('click',e=>{
 if(e.target.closest('a'))return;
-el.querySelector('.detail').hidden=!el.querySelector('.detail').hidden;}));
+const d=el.querySelector('.detail');d.hidden=!d.hidden;el.setAttribute('aria-expanded',!d.hidden);}));
+box.querySelectorAll('.st').forEach(el=>el.addEventListener('keydown',e=>{
+if(e.key==='Enter'||e.key===' '){e.preventDefault();const d=el.querySelector('.detail');d.hidden=!d.hidden;el.setAttribute('aria-expanded',!d.hidden);}}));
 drawPlan(arr);}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
 sort=b.dataset.s;
@@ -164,7 +166,7 @@ function selectStation(i){
 sel=i;
 box.querySelectorAll('.st').forEach(el=>el.classList.toggle('sel',+el.dataset.i===i));
 const card=box.querySelector(`.st[data-i="${i}"]`);
-if(card){card.scrollIntoView({block:'nearest',behavior:'smooth'});card.querySelector('.detail').hidden=false;}
+if(card){const smooth=!window.matchMedia('(prefers-reduced-motion: reduce)').matches;card.scrollIntoView({block:'nearest',behavior:smooth?'smooth':'auto'});card.querySelector('.detail').hidden=false;card.setAttribute('aria-expanded','true');}
 if(lastS)drawPlan(sortedStations());}
 document.getElementById('dt').addEventListener('change',e=>{
 document.getElementById('dopts').style.display=e.target.checked?'flex':'none';});
