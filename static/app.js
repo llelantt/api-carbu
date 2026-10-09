@@ -71,6 +71,10 @@ ${(x.services || []).length ? `<div class="fiab">${x.services.map(s => `<span cl
 </div>
 </div>`).join('');
 }
+export function previsionLine(p) {
+  if (p.tendance === 'inconnu' || p.points < 2) return "Tendance 7 j : — · pas encore assez d'historique";
+  return `Tendance 7 j : ${p.tendance} (${p.variation >= 0 ? '+' : ''}${pf(p.variation)} €) · ${p.points} relevé(s)`;
+}
 export function errorText(status, body) {
   body = body || {};
   if (status === 429) {
@@ -324,7 +328,7 @@ if (hasDOM) {
         const p = await jd(rP);
         if (rP.ok) {
           const el = document.getElementById('prev'); el.hidden = false;
-          el.innerHTML = `<b>${p.conseil}</b><br><span class="addr">Tendance 7 j : ${p.tendance} (${p.variation >= 0 ? '+' : ''}${pf(p.variation)} €) · ${p.points} relevé(s)</span>`;
+          el.innerHTML = `<b>${p.conseil}</b><br><span class="addr">${previsionLine(p)}</span>`;
         }
       } catch { /* prévision optionnelle */ }
       document.getElementById('c-moy').textContent = pf(t.moyenne) + ' €';

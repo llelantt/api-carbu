@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, project, priceColor, markerClass, shouldUseLeaflet, choosePlan, leafletPlan,
-  stationsHTML, planSVG, errorText,
+  stationsHTML, planSVG, errorText, previsionLine,
 } from '../static/app.js';
 
 const station = (over = {}) => ({
@@ -121,6 +121,22 @@ describe('shouldUseLeaflet', () => {
     expect(shouldUseLeaflet({ ...ok, hasL: false })).toBe(false);
     expect(shouldUseLeaflet({ ...ok, tilesOK: false })).toBe(false);
     expect(shouldUseLeaflet({ ...ok, online: false })).toBe(false);
+  });
+});
+
+describe('previsionLine', () => {
+  it('tendance inconnue -> tiret sans variation chiffrée', () => {
+    const t = previsionLine({ tendance: 'inconnu', variation: 0, points: 1 });
+    expect(t).toContain('—');
+    expect(t).toContain("pas encore assez d'historique");
+    expect(t).not.toContain('€');
+  });
+  it('moins de 2 relevés -> idem', () => {
+    expect(previsionLine({ tendance: 'hausse', variation: 0.01, points: 1 })).toContain('—');
+  });
+  it('tendance connue -> variation signée', () => {
+    const t = previsionLine({ tendance: 'hausse', variation: 0.012, points: 5 });
+    expect(t).toContain('+0,012 €');
   });
 });
 
