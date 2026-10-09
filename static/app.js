@@ -15,6 +15,10 @@ export function project(lat, lon, c0) {
 export function priceColor(p, mn, mx) {
   return `hsl(${Math.round(140 - 140 * (p - mn) / ((mx - mn) || 1))} 70% 42%)`;
 }
+export function markerClass(p, mn, mx) {
+  if (!(mx > mn)) return 'mk0';
+  return 'mk' + Math.min(4, Math.round(4 * (p - mn) / (mx - mn)));
+}
 export function planSVG(P, { R, mn, mx, sel, centerLabel }) {
   if (!P.length) return null;
   const km = r => (R * r).toFixed(R * r < 10 ? 1 : 0).replace('.', ',');
@@ -107,9 +111,13 @@ function renderList() {
   box.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
     if (e.target.closest('a')) return;
     const d = el.querySelector('.detail'); d.hidden = !d.hidden; el.setAttribute('aria-expanded', !d.hidden);
+    focusMarker(+el.dataset.i);
   }));
   box.querySelectorAll('.st').forEach(el => el.addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const d = el.querySelector('.detail'); d.hidden = !d.hidden; el.setAttribute('aria-expanded', !d.hidden); }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault(); const d = el.querySelector('.detail'); d.hidden = !d.hidden; el.setAttribute('aria-expanded', !d.hidden);
+      focusMarker(+el.dataset.i);
+    }
   }));
   drawPlan(arr);
 }
@@ -140,7 +148,18 @@ function selectStation(i) {
   }
   if (lastS) drawPlan(sortedStations());
 }
-let lmap = null, llayer = null;
+let lmap = null, llayer = null, lmarkers = [];
+function focusMarker(i) {
+  if (mode !== 'carte' || !lmap || typeof window === 'undefined' || !window.L) return;
+  const f = lmarkers.find(o => o.i === i);
+  if (!f) return;
+  const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  lmap.setView(f.m.getLatLng(), Math.max(lmap.getZoom(), 14), { animate: smooth });
+  lmarkers.forEach(o => {
+    const e = o.m.getElement() && o.m.getElement().querySelector('.mk');
+    if (e) e.classList.toggle('sel', o.i === i);
+  });
+}
 function drawLeaflet(arr) {
   const el = document.getElementById('map');
   const pts = arr.map((x, i) => ({ x, i })).filter(o => o.x.lat != null && o.x.lon != null);
@@ -154,13 +173,15 @@ function drawLeaflet(arr) {
     }).addTo(lmap);
   }
   if (llayer) llayer.clearLayers(); else llayer = window.L.layerGroup().addTo(lmap);
-  const pill = (p, best) => window.L.divIcon({ className: '', html: `<div class="pill${best ? ' best' : ''}">${pf2(p)} €</div>`, iconSize: null });
+  const pr0 = pts.map(o => o.x.prix), mn0 = Math.min(...pr0), mx0 = Math.max(...pr0);
+  const pill = (p, i) => window.L.divIcon({ className: '', html: `<div class="mk ${markerClass(p, mn0, mx0)}${sel === i ? ' sel' : ''}">${pf2(p)} €</div>`, iconSize: null });
   const bounds = [];
-  pts.forEach(({ x, i }) => {
+  lmarkers = pts.map(({ x, i }) => {
     bounds.push([x.lat, x.lon]);
-    const m = window.L.marker([x.lat, x.lon], { icon: pill(x.prix, i === 0) }).addTo(llayer);
+    const m = window.L.marker([x.lat, x.lon], { icon: pill(x.prix, i) }).addTo(llayer);
     m.bindPopup(`<b>${pf(x.prix)} €</b><br>${esc(x.adresse)}<br>${esc(x.ville)}`);
     m.on('click', () => selectStation(i));
+    return { i, m };
   });
   if (pos) {
     bounds.push([pos.lat, pos.lon]);

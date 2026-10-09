@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, project, priceColor,
+  esc, pf, pf2, project, priceColor, markerClass,
   stationsHTML, planSVG, errorText,
 } from '../static/app.js';
 
@@ -54,6 +54,18 @@ describe('couleur prix', () => {
   it('min -> vert (teinte 140), max -> rouge (teinte 0)', () => {
     expect(priceColor(1, 1, 2)).toContain('140');
     expect(priceColor(2, 1, 2)).toContain('0');
+  });
+});
+
+describe('classe marqueur', () => {
+  it('min -> mk0, max -> mk4, milieu -> mk2', () => {
+    expect(markerClass(1, 1, 2)).toBe('mk0');
+    expect(markerClass(2, 1, 2)).toBe('mk4');
+    expect(markerClass(1.5, 1, 2)).toBe('mk2');
+  });
+  it('prix égaux -> mk0, borné à mk4', () => {
+    expect(markerClass(1.5, 1.5, 1.5)).toBe('mk0');
+    expect(markerClass(9, 1, 2)).toBe('mk4');
   });
 });
 
