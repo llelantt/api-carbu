@@ -1,0 +1,13 @@
+{
+  "name": "api-carbu",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -16,6 +16,13 @@ uvicorn main:app --reload
 
 Interface : http://127.0.0.1:8000
 
+## Tests front
+
+```bash
+npm install
+npm test   # vitest + jsdom (aussi lancé par la CI GitHub)
+```
+
 ## Exemples d'URL
 
 - `GET /api` — nom de l'API et liste des routes

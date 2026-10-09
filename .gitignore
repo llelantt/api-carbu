@@ -1,2 +1,4 @@
 __pycache__/
 historique.json
+node_modules/
+.github/workflows/ci.yml
