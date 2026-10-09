@@ -25,6 +25,9 @@ button:hover{filter:brightness(.95)}.cards{display:grid;grid-template-columns:re
 .badge.old{background:#f59e0b}.badge.rup{background:#b91c1c}
 .badge.fl{background:#16a34a}.badge.mo{background:#f59e0b}.badge.de{background:#dc2626}.badge.fe{background:#6b7280}
 .fiab{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.itin{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.itin a{flex:1;min-width:90px;text-align:center;text-decoration:none;font-size:.85rem;font-weight:600;padding:8px;border-radius:10px;background:var(--bg);color:var(--text);border:1px solid #e5e7eb}
+.st{cursor:pointer}
 .eco{color:var(--accent);font-weight:600;font-size:.9rem}
 #msg{text-align:center;color:var(--muted);margin:16px 0}.err{color:#b91c1c!important}
 #map{height:320px;border-radius:14px;margin:16px 0;box-shadow:0 2px 10px rgba(0,0,0,.06);z-index:0}
@@ -99,6 +102,10 @@ const zoneL=()=>pos?`autour de moi (${document.getElementById('dist').value} km)
 const affBadge=a=>{const c={fluide:'fl','modérée':'mo',dense:'de','fermé':'fe'}[a.niveau]||'fe';
 const t=a.niveau==='fermé'?'Fermé':`${a.ouvert===false?'Fermé · ':a.ouvert?'Ouvert · ':''}Affluence ${a.niveau}`;
 return `<span class="badge ${c}">${t}</span>`;};
+const navLinks=x=>{
+const dest=(x.lat!=null&&x.lon!=null)?`${x.lat},${x.lon}`:encodeURIComponent(`${x.adresse||''} ${x.ville||''}`);
+const u={w:`https://waze.com/ul?ll=${dest}&navigate=yes`,g:`https://www.google.com/maps/dir/?api=1&destination=${dest}`,p:`https://maps.apple.com/?daddr=${dest}`};
+return `Y aller : <a href="${u.w}" target="_blank" rel="noopener">Waze</a><a href="${u.g}" target="_blank" rel="noopener">Google Maps</a><a href="${u.p}" target="_blank" rel="noopener">Plans</a>`;};
 let map=null,layer=null;
 function showMap(stations){
 const el=document.getElementById('map');
@@ -167,13 +174,17 @@ if(s.detour){const d=s.detour,el=document.getElementById('detour');
 el.hidden=false;
 el.innerHTML=`<b>${d.vaut_le_coup?'✅':'❌'} ${d.message}</b><br><span class="addr">Détour : la moins chère (${t.min.toFixed(3)} €) vs la plus chère (${max.toFixed(3)} €) · Net : ${d.economie_nette.toFixed(2)} €</span>`;}
 box.innerHTML=s.stations.map((x,i)=>`
-<div class="st"><div class="top"><span class="prix">${x.prix.toFixed(3)} €</span>
+<div class="st" data-i="${i}"><div class="top"><span class="prix">${x.prix.toFixed(3)} €</span>
 ${i===0?'<span class="badge">Meilleur prix</span>':''}</div>
 <div>${x.adresse||'Adresse inconnue'}</div>
 <div class="addr">${x.ville||''}${x.distance_km!=null?` · à ${x.distance_km} km`:''} · ${x.date?new Date(x.date).toLocaleDateString('fr-FR'):''}${x.jours!=null?` · il y a ${x.jours} j`:''}</div>
 <div class="fiab">${x.perime?`<span class="badge old">Prix vieux de ${x.jours} j</span>`:''}${x.rupture?`<span class="badge rup">Rupture ${x.rupture}</span>`:''}${x.affluence?affBadge(x.affluence):''}</div>
 <div class="eco">${i===0?'—':`Économie : ${((max-x.prix)*50).toFixed(2)} € sur un plein de 50 L`}</div>
+<div class="itin" hidden>${navLinks(x)}</div>
 </div>`).join('');
+box.querySelectorAll('.st').forEach(el=>el.addEventListener('click',e=>{
+if(e.target.closest('a'))return;
+el.querySelector('.itin').hidden=!el.querySelector('.itin').hidden;}));
 showMap(s.stations);
 }catch(err){msg.textContent=err.message;msg.className='err';}
 checkAlertes(zcp,carb);
