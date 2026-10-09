@@ -36,11 +36,16 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{ou
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
 .card{text-align:center}
 .card .label{font-size:.8rem;color:var(--mut)}
-.card .val{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+.card .val{background:var(--board);color:var(--led);font:700 20px/1 "Barlow Semi Condensed",Barlow,system-ui,sans-serif;letter-spacing:.04em;padding:7px 10px;border-radius:6px;font-variant-numeric:tabular-nums}
+.led{background:var(--board);color:var(--led);font:700 22px/1 "Barlow Semi Condensed",Barlow,system-ui,sans-serif;letter-spacing:.04em;padding:7px 10px;border-radius:6px;font-variant-numeric:tabular-nums;text-align:center}
+.led.sm{display:inline-block;font-size:15px;padding:4px 8px}
+.rk{font:700 16px "Barlow Semi Condensed",Barlow,system-ui,sans-serif;color:var(--mut);min-width:22px}
+.tot{font-size:12px;color:var(--mut);text-align:right;margin-top:3px}
 .card.hl{border:2px solid var(--accent)}
 #stations{display:grid;gap:8px}
 .st .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .st .prix{background:var(--board);color:var(--led);font:700 22px/1 "Barlow Semi Condensed",Barlow,system-ui,sans-serif;letter-spacing:.04em;padding:7px 10px;border-radius:6px;font-variant-numeric:tabular-nums}
+.st .prix small{font-size:11px;opacity:.8;margin-left:2px}
 .st .addr{color:var(--mut);font-size:13px;margin-top:2px}
 .badge{font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--ink)}
 .badge.old{background:#f59e0b;border-color:#f59e0b;color:#fff}

@@ -82,6 +82,8 @@ const navLinks=x=>{
 const dest=(x.lat!=null&&x.lon!=null)?`${x.lat},${x.lon}`:encodeURIComponent(`${x.adresse||''} ${x.ville||''}`);
 const u={w:`https://waze.com/ul?ll=${dest}&navigate=yes`,g:`https://www.google.com/maps/dir/?api=1&destination=${dest}`,p:`https://maps.apple.com/?daddr=${dest}`};
 return `Y aller : <a href="${u.w}" target="_blank" rel="noopener">Waze</a><a href="${u.g}" target="_blank" rel="noopener">Google Maps</a><a href="${u.p}" target="_blank" rel="noopener">Plans</a>`;};
+const pf=n=>Number(n).toFixed(3).replace('.',',');
+const pf2=n=>Number(n).toFixed(2).replace('.',',');
 let map=null,layer=null;
 function showMap(stations){
 const el=document.getElementById('map');
@@ -92,11 +94,11 @@ el.innerHTML='<p class="addr" style="padding:16px">Carte indisponible : connexio
 el.hidden=false;
 if(!map){map=L.map('map');L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);}
 if(layer)layer.clearLayers();else layer=L.layerGroup().addTo(map);
-const pill=(p,best)=>L.divIcon({className:'',html:`<div style="background:${best?'#16a34a':'#fff'};color:${best?'#fff':'#1f2937'};border:2px solid ${best?'#16a34a':'#6b7280'};border-radius:999px;padding:2px 8px;font-weight:800;font-size:12px;white-space:nowrap">${p.toFixed(2)} €</div>`});
+const pill=(p,best)=>L.divIcon({className:'',html:`<div style="background:${best?'#16a34a':'#fff'};color:${best?'#fff':'#1f2937'};border:2px solid ${best?'#16a34a':'#6b7280'};border-radius:999px;padding:2px 8px;font-weight:800;font-size:12px;white-space:nowrap">${p.toFixed(2).replace('.',',')} €</div>`});
 const bounds=[];
 pts.forEach((x,i)=>{bounds.push([x.lat,x.lon]);
 L.marker([x.lat,x.lon],{icon:pill(x.prix,i===0)}).addTo(layer)
-.bindPopup(`<b>${x.prix.toFixed(3)} €</b><br>${x.adresse||''}<br>${x.ville||''}`);});
+.bindPopup(`<b>${pf(x.prix)} €</b><br>${x.adresse||''}<br>${x.ville||''}`);});
 if(pos){bounds.push([pos.lat,pos.lon]);
 L.circleMarker([pos.lat,pos.lon],{radius:8,color:'#2563eb',fillColor:'#2563eb',fillOpacity:1}).addTo(layer).bindPopup('Toi');}
 map.fitBounds(bounds,{padding:[30,30]});
@@ -135,10 +137,10 @@ if(!rS.ok){const rl=(s.ruptures||[]).map(r=>`${r.adresse||'adresse inconnue'} ($
 throw new Error((s.detail||'Erreur')+(rl?` Ruptures : ${rl}.`:''));}
 try{const p=await rP.json();
 if(rP.ok){const el=document.getElementById('prev');el.hidden=false;
-el.innerHTML=`<b>${p.conseil}</b><br><span class="addr">Tendance 7 j : ${p.tendance} (${p.variation>=0?'+':''}${p.variation.toFixed(3)} €) · ${p.points} relevé(s)</span>`;}}catch{}
-document.getElementById('c-moy').textContent=t.moyenne.toFixed(3)+' €';
-document.getElementById('c-min').textContent=t.min.toFixed(3)+' €';
-document.getElementById('c-max').textContent=t.max.toFixed(3)+' €';
+el.innerHTML=`<b>${p.conseil}</b><br><span class="addr">Tendance 7 j : ${p.tendance} (${p.variation>=0?'+':''}${pf(p.variation)} €) · ${p.points} relevé(s)</span>`;}}catch{}
+document.getElementById('c-moy').textContent=pf(t.moyenne)+' €';
+document.getElementById('c-min').textContent=pf(t.min)+' €';
+document.getElementById('c-max').textContent=pf(t.max)+' €';
 cards.hidden=false;lastStations=s.stations;
 zl=zoneL();zcp=pos?(s.stations[0].cp||'') :document.getElementById('cp').value.trim();
 msg.textContent=`${t.nombre} station(s) — ${zl} · ${carb.toUpperCase()}`;
@@ -148,14 +150,16 @@ if(per||rup)msg.textContent+=` · ${per?per+' prix de + de 7 j':''}${per&&rup?' 
 msg.textContent+=` · ${ouv}/${s.stations.length} ouverte(s)`;
 if(s.detour){const d=s.detour,el=document.getElementById('detour');
 el.hidden=false;
-el.innerHTML=`<b>${d.vaut_le_coup?'✅':'❌'} ${d.message}</b><br><span class="addr">Détour : la moins chère (${t.min.toFixed(3)} €) vs la plus chère (${max.toFixed(3)} €) · Net : ${d.economie_nette.toFixed(2)} €</span>`;}
+el.innerHTML=`<b>${d.vaut_le_coup?'✅':'❌'} ${d.message}</b><br><span class="addr">Détour : la moins chère <span class="led sm">${pf(t.min)} €</span> vs la plus chère <span class="led sm">${pf(max)} €</span> · Net : <span class="led sm">${pf2(d.economie_nette)} €</span></span>`;}
+const L=+vo||50;
 box.innerHTML=s.stations.map((x,i)=>`
-<div class="st" data-i="${i}"><div class="top"><span class="prix">${x.prix.toFixed(3)} €</span>
+<div class="st" data-i="${i}"><div class="top"><span class="rk">${i+1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
 ${i===0?'<span class="badge">Meilleur prix</span>':''}</div>
-<div>${x.adresse||'Adresse inconnue'}</div>
-<div class="addr">${x.ville||''}${x.distance_km!=null?` · à ${x.distance_km} km`:''} · ${x.date?new Date(x.date).toLocaleDateString('fr-FR'):''}${x.jours!=null?` · il y a ${x.jours} j`:''}</div>
+<div><b>${x.adresse||'Adresse inconnue'}</b></div>
+<div class="addr">${x.ville||''}${x.distance_km!=null?` · à ${String(x.distance_km).replace('.',',')} km`:''} · ${x.date?new Date(x.date).toLocaleDateString('fr-FR'):''}${x.jours!=null?` · il y a ${x.jours} j`:''}</div>
 <div class="fiab">${x.perime?`<span class="badge old">Prix vieux de ${x.jours} j</span>`:''}${x.rupture?`<span class="badge rup">Rupture ${x.rupture}</span>`:''}${x.affluence?affBadge(x.affluence):''}</div>
-<div class="eco">${i===0?'—':`Économie : ${((max-x.prix)*50).toFixed(2)} € sur un plein de 50 L`}</div>
+<div class="tot">Plein ${L} L : ${pf2(x.prix*L)} €</div>
+<div class="eco">${i===0?'—':`Économie : ${pf2((max-x.prix)*L)} € sur un plein de ${L} L`}</div>
 <div class="itin" hidden>${navLinks(x)}</div>
 </div>`).join('');
 box.querySelectorAll('.st').forEach(el=>el.addEventListener('click',e=>{
@@ -171,7 +175,7 @@ const getA=()=>{try{return JSON.parse(localStorage.getItem('alertes')||'[]')}cat
 const setA=a=>localStorage.setItem('alertes',JSON.stringify(a));
 function renderA(){
 const a=getA();
-alBox.innerHTML=a.length?a.map((x,i)=>`<div class="st"><div class="top"><b>${x.cp} · ${x.carburant.toUpperCase()} · ≤ ${Number(x.seuil).toFixed(3)} €</b><button data-i="${i}" style="padding:4px 12px">✕</button></div></div>`).join(''):'<span class="addr">Aucune alerte.</span>';
+alBox.innerHTML=a.length?a.map((x,i)=>`<div class="st"><div class="top"><b>${x.cp} · ${x.carburant.toUpperCase()} · ≤ ${pf(x.seuil)} €</b><button data-i="${i}" style="padding:4px 12px">✕</button></div></div>`).join(''):'<span class="addr">Aucune alerte.</span>';
 alBox.querySelectorAll('button').forEach(b=>b.onclick=()=>{const l=getA();l.splice(+b.dataset.i,1);setA(l);renderA();});
 }
 async function checkAlertes(cp,carb){
@@ -182,8 +186,8 @@ try{
 const r=await fetch(`/alertes/check?${zoneP()}&carburant=${carb}&seuil=${a.seuil}`),d=await r.json();
 if(r.ok&&d.declenchee){
 el.hidden=false;
-el.innerHTML=`<b>🔔 Alerte prix : ${d.min.toFixed(3)} € ≤ ${Number(a.seuil).toFixed(3)} € (${cp} · ${carb.toUpperCase()})</b>`;
-if('Notification' in window&&Notification.permission==='granted')new Notification('Prix sous le seuil',{body:`${carb.toUpperCase()} à ${d.min.toFixed(3)} € (${cp})`});
+el.innerHTML=`<b>🔔 Alerte prix : ${pf(d.min)} € ≤ ${pf(a.seuil)} € (${cp} · ${carb.toUpperCase()})</b>`;
+if('Notification' in window&&Notification.permission==='granted')new Notification('Prix sous le seuil',{body:`${carb.toUpperCase()} à ${pf(d.min)} € (${cp})`});
 break;}
 }catch{}
 }
@@ -198,7 +202,7 @@ if(!(seuil>0)){msga.textContent='Seuil invalide.';msga.className='err';return;}
 if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();
 const l=getA();
 if(!l.some(x=>x.cp===cp&&x.carburant===carb&&+x.seuil===seuil))l.push({cp,carburant:carb,seuil});
-setA(l);renderA();msga.textContent=`Alerte créée : ${cp} · ${carb.toUpperCase()} ≤ ${seuil.toFixed(3)} €.`;msga.className='';
+setA(l);renderA();msga.textContent=`Alerte créée : ${cp} · ${carb.toUpperCase()} ≤ ${pf(seuil)} €.`;msga.className='';
 checkAlertes(cp,carb);
 });
 renderA();
