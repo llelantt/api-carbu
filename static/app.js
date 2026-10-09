@@ -124,6 +124,29 @@ function renderList() {
 export function shouldUseLeaflet({ mode, hasL, tilesOK, online }) {
   return mode === 'carte' && !!hasL && tilesOK !== false && online !== false;
 }
+export function choosePlan(o) {
+  return shouldUseLeaflet(o) ? 'leaflet' : 'svg';
+}
+export const PLAN_ZOOM_SINGLE = 15, PLAN_ZOOM_EMPTY = 14;
+export function leafletPlan(arr, { sel, pos }) {
+  const pts = arr.map((x, i) => ({ x, i })).filter(o => o.x.lat != null && o.x.lon != null);
+  if (!pts.length) {
+    if (!pos) return null;
+    return { markers: [], user: pos, bounds: null, center: [pos.lat, pos.lon], zoom: PLAN_ZOOM_EMPTY };
+  }
+  const pr = pts.map(o => o.x.prix), mn = Math.min(...pr), mx = Math.max(...pr);
+  const markers = pts.map(({ x, i }) => ({
+    i, lat: x.lat, lon: x.lon,
+    html: `<div class="mk ${markerClass(x.prix, mn, mx)}${sel === i ? ' sel' : ''}">${pf2(x.prix)} €</div>`,
+    popup: `<b>${pf(x.prix)} €</b><br>${esc(x.adresse)}<br>${esc(x.ville)}`,
+  }));
+  if (pts.length === 1 && !pos) {
+    return { markers, user: null, bounds: null, center: [pts[0].x.lat, pts[0].x.lon], zoom: PLAN_ZOOM_SINGLE };
+  }
+  const bounds = pts.map(o => [o.x.lat, o.x.lon]);
+  if (pos) bounds.push([pos.lat, pos.lon]);
+  return { markers, user: pos || null, bounds, center: null, zoom: null };
+}
 let tilesOK = true, tileErrs = 0;
 function showMapWarn() {
   const w = document.getElementById('mapwarn');
@@ -133,7 +156,7 @@ function showMapWarn() {
 function drawPlan(arr) {
   const online = typeof navigator !== 'undefined' ? navigator.onLine : undefined;
   const hasL = typeof window !== 'undefined' && !!window.L;
-  if (shouldUseLeaflet({ mode, hasL, tilesOK, online })) {
+  if (choosePlan({ mode, hasL, tilesOK, online }) === 'leaflet') {
     document.getElementById('mapwarn').hidden = true;
     drawLeaflet(arr); return;
   }
@@ -177,8 +200,8 @@ function focusMarker(i) {
 }
 function drawLeaflet(arr) {
   const el = document.getElementById('map');
-  const pts = arr.map((x, i) => ({ x, i })).filter(o => o.x.lat != null && o.x.lon != null);
-  if (!pts.length) { el.hidden = true; return; }
+  const plan = leafletPlan(arr, { sel, pos });
+  if (!plan) { el.hidden = true; return; }
   el.hidden = false;
   if (!lmap) {
     const coarse = window.matchMedia('(pointer: coarse)').matches;
@@ -197,21 +220,17 @@ function drawLeaflet(arr) {
     tl.addTo(lmap);
   }
   if (llayer) llayer.clearLayers(); else llayer = window.L.layerGroup().addTo(lmap);
-  const pr0 = pts.map(o => o.x.prix), mn0 = Math.min(...pr0), mx0 = Math.max(...pr0);
-  const pill = (p, i) => window.L.divIcon({ className: '', html: `<div class="mk ${markerClass(p, mn0, mx0)}${sel === i ? ' sel' : ''}">${pf2(p)} €</div>`, iconSize: null });
-  const bounds = [];
-  lmarkers = pts.map(({ x, i }) => {
-    bounds.push([x.lat, x.lon]);
-    const m = window.L.marker([x.lat, x.lon], { icon: pill(x.prix, i) }).addTo(llayer);
-    m.bindPopup(`<b>${pf(x.prix)} €</b><br>${esc(x.adresse)}<br>${esc(x.ville)}`);
-    m.on('click', () => selectStation(i));
-    return { i, m };
+  lmarkers = plan.markers.map(d => {
+    const m = window.L.marker([d.lat, d.lon], { icon: window.L.divIcon({ className: '', html: d.html, iconSize: null }) }).addTo(llayer);
+    m.bindPopup(d.popup);
+    m.on('click', () => selectStation(d.i));
+    return { i: d.i, m };
   });
-  if (pos) {
-    bounds.push([pos.lat, pos.lon]);
-    window.L.circleMarker([pos.lat, pos.lon], { radius: 8, color: '#2563eb', fillColor: '#2563eb', fillOpacity: 1 }).addTo(llayer).bindPopup('Toi');
+  if (plan.user) {
+    window.L.circleMarker([plan.user.lat, plan.user.lon], { radius: 8, color: '#2563eb', fillColor: '#2563eb', fillOpacity: 1 }).addTo(llayer).bindPopup('Toi');
   }
-  lmap.fitBounds(bounds, { padding: [30, 30] });
+  if (plan.bounds) lmap.fitBounds(plan.bounds, { padding: [30, 30] });
+  else lmap.setView(plan.center, plan.zoom);
   setTimeout(() => lmap.invalidateSize(), 100);
 }
 

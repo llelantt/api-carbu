@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, project, priceColor, markerClass, shouldUseLeaflet,
+  esc, pf, pf2, project, priceColor, markerClass, shouldUseLeaflet, choosePlan, leafletPlan,
   stationsHTML, planSVG, errorText,
 } from '../static/app.js';
 
@@ -142,5 +142,56 @@ describe('errorText', () => {
     expect(e.kind).toBe('empty');
     expect(e.text).toContain('Aucune station trouvée.');
     expect(e.text).toContain('Ruptures');
+  });
+});
+
+const geo = (over = {}) => ({
+  lat: 48.95, lon: 2.6, prix: 1.8, adresse: 'A', ville: 'V', ...over,
+});
+
+describe('leafletPlan', () => {
+  it('un marqueur par station géolocalisée, couleurs min/max', () => {
+    const p = leafletPlan(
+      [geo({ prix: 1.5 }), geo({ prix: 2.5 }), { lat: null, lon: null, prix: 1.0 }],
+      { sel: null, pos: null },
+    );
+    expect(p.markers).toHaveLength(2);
+    expect(p.markers[0].html).toContain('mk0');
+    expect(p.markers[1].html).toContain('mk4');
+    expect(p.bounds).toHaveLength(2);
+  });
+  it('sélection mise en évidence', () => {
+    const p = leafletPlan([geo(), geo()], { sel: 1, pos: null });
+    expect(p.markers[1].html).toContain(' sel');
+    expect(p.markers[0].html).not.toContain(' sel');
+  });
+  it('échappe un nom contenant du HTML dans la popup', () => {
+    const p = leafletPlan([geo({ adresse: '<script>alert(1)</script>' })], { sel: null, pos: null });
+    expect(p.markers[0].popup).toContain('&lt;script&gt;');
+    expect(p.markers[0].popup).not.toContain('<script>alert');
+  });
+  it('liste vide + départ connu -> carte centrée sur le départ', () => {
+    const p = leafletPlan([], { sel: null, pos: { lat: 48.8, lon: 2.3 } });
+    expect(p.center).toEqual([48.8, 2.3]);
+    expect(p.zoom).toBe(14);
+    expect(p.markers).toEqual([]);
+  });
+  it('liste vide sans départ -> null', () => {
+    expect(leafletPlan([], { sel: null, pos: null })).toBeNull();
+  });
+  it('une seule station -> zoom maximum borné', () => {
+    const p = leafletPlan([geo()], { sel: null, pos: null });
+    expect(p.bounds).toBeNull();
+    expect(p.center).toEqual([48.95, 2.6]);
+    expect(p.zoom).toBeLessThanOrEqual(16);
+  });
+});
+
+describe('choosePlan', () => {
+  it('tout ok -> leaflet', () => {
+    expect(choosePlan({ mode: 'carte', hasL: true, tilesOK: true, online: true })).toBe('leaflet');
+  });
+  it('Leaflet absent -> repli svg', () => {
+    expect(choosePlan({ mode: 'carte', hasL: false, tilesOK: true, online: true })).toBe('svg');
   });
 });
