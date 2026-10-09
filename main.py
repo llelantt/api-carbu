@@ -186,6 +186,11 @@ def calc_prevision(cp, carburant, lat=None, lon=None):
     return {"tendance": tendance, "variation": variation, "points": n, "conseil": conseil}
 
 
+def total_cout(prix, km_ar, conso=6.5, plein=50):
+    """Coût total du plein, trajet aller-retour inclus (km_ar = km A/R)."""
+    return round(plein * prix + km_ar * conso / 100 * prix, 2)
+
+
 def calc_detour(prix_proche, km_proche, prix_loin, km_loin, conso=6.5, plein=50):
     economie_station = round((prix_proche - prix_loin) * plein, 2)
     km_extra = max(0.0, km_loin - km_proche)
@@ -257,8 +262,23 @@ async def stations(
             "prix_perimes": sum(1 for s in data if s["perime"]), "ruptures": ruptures}
     if lat is not None and lon is not None:
         resp["position"] = {"lat": lat, "lon": lon, "dist": dist}
+    for s in data:
+        km_ar = 2 * s["distance_km"] if s.get("distance_km") is not None else 0.0
+        s["total_cost"] = total_cout(s["prix"], km_ar, conso, plein)
+    near = min([s for s in data if s.get("distance_km") is not None],
+               key=lambda s: s["distance_km"], default=None)
+    for s in data:
+        s["economy_vs_nearest"] = round(near["total_cost"] - s["total_cost"], 2) if near else None
     if km_proche is not None and km_loin is not None and len(data) >= 1:
-        resp["detour"] = calc_detour(data[-1]["prix"], km_proche, data[0]["prix"], km_loin, conso, plein)
+        d = calc_detour(data[-1]["prix"], km_proche, data[0]["prix"], km_loin, conso, plein)
+        d["station_proche"] = {k: data[-1][k] for k in ("adresse", "ville", "prix")}
+        d["station_proche"].update({"distance_km": km_proche,
+            "total_cost": total_cout(data[-1]["prix"], km_proche, conso, plein)})
+        d["station_loin"] = {k: data[0][k] for k in ("adresse", "ville", "prix")}
+        d["station_loin"].update({"distance_km": km_loin,
+            "total_cost": total_cout(data[0]["prix"], km_loin, conso, plein)})
+        d["economy_vs_nearest"] = d["economie_nette"]
+        resp["detour"] = d
     return resp
 
 

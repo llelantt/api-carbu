@@ -61,6 +61,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{ou
 .st{cursor:pointer}
 .eco{color:var(--accent);font-weight:600;font-size:.9rem;margin-top:2px}
 #msg{text-align:center;color:var(--mut);margin:16px 0;font-size:13px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .err{color:#b91c1c!important}
 #map{height:320px;border-radius:10px;border:1px solid var(--line);margin:16px 0;z-index:0;background:var(--card);padding:0}
 @media(max-width:560px){

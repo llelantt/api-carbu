@@ -46,6 +46,11 @@
 <div class="st" id="notif" hidden style="border:2px solid #f59e0b;margin-bottom:10px"></div>
 <div class="st" id="prev" hidden style="border:2px solid #2563eb;margin-bottom:10px"></div>
 <div id="map"></div>
+<div class="tabs" role="group" aria-label="Trier par">
+<button type="button" data-s="tot" aria-pressed="true">Coût réel</button>
+<button type="button" data-s="pr" aria-pressed="false">Prix au litre</button>
+<button type="button" data-s="d" aria-pressed="false">Distance</button>
+</div>
 <div id="stations"></div>
 <h2 style="margin-top:28px">Alertes prix</h2>
 <p class="sub">Notifié quand le prix passe sous ton seuil dans ta zone.</p>
@@ -84,6 +89,33 @@ const u={w:`https://waze.com/ul?ll=${dest}&navigate=yes`,g:`https://www.google.c
 return `Y aller : <a href="${u.w}" target="_blank" rel="noopener">Waze</a><a href="${u.g}" target="_blank" rel="noopener">Google Maps</a><a href="${u.p}" target="_blank" rel="noopener">Plans</a>`;};
 const pf=n=>Number(n).toFixed(3).replace('.',',');
 const pf2=n=>Number(n).toFixed(2).replace('.',',');
+let sort='tot',lastS=null,lastT=null,lastMax=0,lastL=50;
+function sortedStations(){
+const a=[...lastS];
+if(sort==='pr')a.sort((x,y)=>x.prix-y.prix);
+else if(sort==='d')a.sort((x,y)=>(x.distance_km??1e9)-(y.distance_km??1e9));
+else a.sort((x,y)=>(x.total_cost??1e9)-(y.total_cost??1e9));
+return a;}
+function renderList(){
+const arr=sortedStations(),mn=lastT.min;
+box.innerHTML=arr.map((x,i)=>`
+<div class="st" data-i="${i}"><div class="top"><span class="rk">${i+1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
+${x.prix===mn?'<span class="badge">Meilleur prix</span>':''}</div>
+<div><b>${x.adresse||'Adresse inconnue'}</b></div>
+<div class="addr">${x.ville||''}${x.distance_km!=null?` · à ${String(x.distance_km).replace('.',',')} km`:''} · ${x.date?new Date(x.date).toLocaleDateString('fr-FR'):''}${x.jours!=null?` · il y a ${x.jours} j`:''}</div>
+<div class="fiab">${x.perime?`<span class="badge old">Prix vieux de ${x.jours} j</span>`:''}${x.rupture?`<span class="badge rup">Rupture ${x.rupture}</span>`:''}${x.affluence?affBadge(x.affluence):''}</div>
+<div class="tot">Plein ${lastL} L : ${pf2(x.total_cost)} €${x.distance_km!=null?' détour inclus':''}</div>
+<div class="eco">${x.prix===mn?'—':`Économie : ${pf2((lastMax-x.prix)*lastL)} € sur un plein de ${lastL} L`}</div>
+<div class="itin" hidden>${navLinks(x)}</div>
+</div>`).join('');
+box.querySelectorAll('.st').forEach(el=>el.addEventListener('click',e=>{
+if(e.target.closest('a'))return;
+el.querySelector('.itin').hidden=!el.querySelector('.itin').hidden;}));
+showMap(arr);}
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+sort=b.dataset.s;
+document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-pressed',x===b));
+if(lastS)renderList();}));
 let map=null,layer=null;
 function showMap(stations){
 const el=document.getElementById('map');
@@ -148,24 +180,11 @@ const max=t.max,per=s.prix_perimes||0,rup=(s.ruptures||[]).length;
 const ouv=s.stations.filter(x=>x.affluence&&x.affluence.ouvert).length;
 if(per||rup)msg.textContent+=` · ${per?per+' prix de + de 7 j':''}${per&&rup?' · ':''}${rup?rup+' station(s) en rupture':''}`;
 msg.textContent+=` · ${ouv}/${s.stations.length} ouverte(s)`;
-if(s.detour){const d=s.detour,el=document.getElementById('detour');
+if(s.detour){const d=s.detour,el=document.getElementById('detour'),lo=d.station_loin;
 el.hidden=false;
-el.innerHTML=`<b>${d.vaut_le_coup?'✅':'❌'} ${d.message}</b><br><span class="addr">Détour : la moins chère <span class="led sm">${pf(t.min)} €</span> vs la plus chère <span class="led sm">${pf(max)} €</span> · Net : <span class="led sm">${pf2(d.economie_nette)} €</span></span>`;}
-const L=+vo||50;
-box.innerHTML=s.stations.map((x,i)=>`
-<div class="st" data-i="${i}"><div class="top"><span class="rk">${i+1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
-${i===0?'<span class="badge">Meilleur prix</span>':''}</div>
-<div><b>${x.adresse||'Adresse inconnue'}</b></div>
-<div class="addr">${x.ville||''}${x.distance_km!=null?` · à ${String(x.distance_km).replace('.',',')} km`:''} · ${x.date?new Date(x.date).toLocaleDateString('fr-FR'):''}${x.jours!=null?` · il y a ${x.jours} j`:''}</div>
-<div class="fiab">${x.perime?`<span class="badge old">Prix vieux de ${x.jours} j</span>`:''}${x.rupture?`<span class="badge rup">Rupture ${x.rupture}</span>`:''}${x.affluence?affBadge(x.affluence):''}</div>
-<div class="tot">Plein ${L} L : ${pf2(x.prix*L)} €</div>
-<div class="eco">${i===0?'—':`Économie : ${pf2((max-x.prix)*L)} € sur un plein de ${L} L`}</div>
-<div class="itin" hidden>${navLinks(x)}</div>
-</div>`).join('');
-box.querySelectorAll('.st').forEach(el=>el.addEventListener('click',e=>{
-if(e.target.closest('a'))return;
-el.querySelector('.itin').hidden=!el.querySelector('.itin').hidden;}));
-showMap(s.stations);
+el.innerHTML=`<b>${d.vaut_le_coup?'✅':'❌'} ${d.message}</b><br><span class="addr">${lo.adresse||''} · ${lo.ville||''} · à ${String(lo.distance_km).replace('.',',')} km · Plein : <span class="led sm">${pf2(lo.total_cost)} €</span> détour inclus · Économie vs plus proche : <span class="led sm">${d.economy_vs_nearest>=0?'+':''}${pf2(d.economy_vs_nearest)} €</span></span>`;}
+lastS=s.stations;lastT=t;lastMax=t.max;lastL=+vo||50;
+renderList();
 }catch(err){msg.textContent=err.message;msg.className='err';}
 checkAlertes(zcp,carb);
 });
