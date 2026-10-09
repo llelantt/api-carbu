@@ -162,6 +162,8 @@ if(card){card.scrollIntoView({block:'nearest',behavior:'smooth'});card.querySele
 if(lastS)drawPlan(sortedStations());}
 document.getElementById('dt').addEventListener('change',e=>{
 document.getElementById('dopts').style.display=e.target.checked?'flex':'none';});
+let ctl=null,req=0;
+const jd=async r=>{try{return await r.json()}catch{return{}}};
 f.addEventListener('submit',async e=>{
 e.preventDefault();
 const carb=document.getElementById('carb').value,
@@ -169,18 +171,26 @@ useD=document.getElementById('dt').checked,
 kp=document.getElementById('kp').value,kl=document.getElementById('kl').value,
 co=document.getElementById('co').value||'6.5',vo=document.getElementById('vo').value||'50';
 if(!pos&&!document.getElementById('cp').value.trim()){msg.textContent='Indique un code postal ou localise-toi.';msg.className='err';return;}
+if(ctl)ctl.abort();
+ctl=new AbortController();const my=++req,sig=ctl.signal;
+const btn=f.querySelector('button[type="submit"]');btn.disabled=true;
 box.innerHTML='';cards.hidden=true;document.getElementById('detour').hidden=true;sel=null;
 document.getElementById('notif').hidden=true;document.getElementById('prev').hidden=true;
 document.getElementById('map').hidden=true;
-msg.textContent='Chargement…';msg.className='';
+msg.textContent='Recherche en cours…';msg.className='';
 let zl='',zcp='';
 try{
 let url=`/stations?${zoneP()}&carburant=${carb}`;
 if(useD&&kp!==''&&kl!=='')url+=`&km_proche=${encodeURIComponent(kp)}&km_loin=${encodeURIComponent(kl)}&conso=${co}&plein=${vo}`;
-const [rS,rT,rP]=await Promise.all([fetch(url),fetch(`/stats?${zoneP()}&carburant=${carb}`),fetch(`/prevision?${zoneP()}&carburant=${carb}`)]);
-const s=await rS.json(),t=await rT.json();
+const [rS,rT,rP]=await Promise.all([fetch(url,{signal:sig}),fetch(`/stats?${zoneP()}&carburant=${carb}`,{signal:sig}),fetch(`/prevision?${zoneP()}&carburant=${carb}`,{signal:sig})]);
+if(my!==req)return;
+const s=await jd(rS),t=await jd(rT);
+if(rS.status===429){const ra=rS.headers.get('Retry-After');
+throw new Error(`Trop de requêtes. Réessaie dans ${ra?ra+' s':'quelques instants'}.`);}
+if(rS.status===401)throw new Error('Accès refusé : clé API invalide (401).');
+if(rS.status>=500)throw new Error('Service momentanément indisponible, réessaie plus tard.');
 if(!rS.ok){const rl=(s.ruptures||[]).map(r=>`${r.adresse||'adresse inconnue'} (${r.ville||''})`).join(', ');
-throw new Error((s.detail||'Erreur')+(rl?` Ruptures : ${rl}.`:''));}
+msg.textContent=(s.detail||'Aucun résultat.')+(rl?` Ruptures : ${rl}.`:'');msg.className='';btn.disabled=false;return;}
 try{const p=await rP.json();
 if(rP.ok){const el=document.getElementById('prev');el.hidden=false;
 el.innerHTML=`<b>${p.conseil}</b><br><span class="addr">Tendance 7 j : ${p.tendance} (${p.variation>=0?'+':''}${pf(p.variation)} €) · ${p.points} relevé(s)</span>`;}}catch{}
@@ -199,7 +209,13 @@ el.hidden=false;
 el.innerHTML=`<b>${d.vaut_le_coup?'✅':'❌'} ${d.message}</b><br><span class="addr">${lo.adresse||''} · ${lo.ville||''} · à ${String(lo.distance_km).replace('.',',')} km · Plein : <span class="led sm">${pf2(lo.total_cost)} €</span> détour inclus · Économie vs plus proche : <span class="led sm">${d.economy_vs_nearest>=0?'+':''}${pf2(d.economy_vs_nearest)} €</span></span>`;}
 lastS=s.stations;lastT=t;lastMax=t.max;lastL=+vo||50;
 renderList();
-}catch(err){msg.textContent=err.message;msg.className='err';}
+if(my===req)btn.disabled=false;
+}catch(err){
+if(err&&err.name==='AbortError')return;
+if(my!==req)return;
+btn.disabled=false;
+msg.textContent=(err instanceof TypeError)?'Impossible de joindre le serveur. Vérifie ta connexion.':(err&&err.message?err.message:'Erreur inattendue.');
+msg.className='err';}
 checkAlertes(zcp,carb);
 });
 const fa=document.getElementById('fa'),msga=document.getElementById('msga'),

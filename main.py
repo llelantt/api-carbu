@@ -61,6 +61,20 @@ async def fetch_stations(cp, carburant, lat=None, lon=None, dist=10):
             results = r.json().get("results", [])
     except (httpx.TimeoutException, httpx.ConnectError):
         return None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
+    except httpx.HTTPStatusError as e:
+        s = e.response.status_code
+        if s == 401:
+            return None, None, JSONResponse(
+                {"detail": "Accès refusé par l'API de l'État (clé invalide)."}, status_code=401)
+        if s == 429:
+            ra = e.response.headers.get("Retry-After")
+            return None, None, JSONResponse(
+                {"detail": "Trop de requêtes, patiente avant de réessayer.", "retry_after": ra},
+                status_code=429, headers={"Retry-After": ra} if ra else None)
+        if 500 <= s < 600:
+            return None, None, JSONResponse(
+                {"detail": "L'API de l'État renvoie une erreur."}, status_code=502)
+        return None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
     except httpx.HTTPError:
         return None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
 
