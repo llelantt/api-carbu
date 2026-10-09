@@ -50,10 +50,16 @@
 <button type="button" data-s="d" aria-pressed="false">Distance</button>
 </div>
 <div id="stations"></div>
-<h2 style="margin-top:28px">Alertes prix</h2>
+<h2>Alertes prix</h2>
 <p class="sub">Notifié quand le prix passe sous ton seuil dans ta zone.</p>
 <form id="fa">
-<input id="seuil" type="number" step="0.001" min="0" placeholder="Seuil €/L (ex : 1.80)" required>
+<label>Carburant<select id="a-carb">
+<option value="gazole">Gazole</option><option value="sp95">SP95</option>
+<option value="e10" selected>E10</option><option value="sp98">SP98</option>
+<option value="e85">E85</option><option value="gplc">GPLc</option>
+</select></label>
+<label>Seuil (€/L)<input id="seuil" type="number" step="0.001" min="0" placeholder="Ex : 1,80" required><small class="ferr" id="e-seuil"></small></label>
+<label>Zone (code postal)<input id="a-cp" inputmode="numeric" maxlength="5" placeholder="Ex : 77270" required><small class="ferr" id="e-cp"></small></label>
 <button type="submit">M'alerter</button>
 </form>
 <p id="msga"></p>
@@ -199,6 +205,7 @@ document.getElementById('c-min').textContent=pf(t.min)+' €';
 document.getElementById('c-max').textContent=pf(t.max)+' €';
 cards.hidden=false;lastStations=s.stations;
 zl=zoneL();zcp=pos?(s.stations[0].cp||'') :document.getElementById('cp').value.trim();
+document.getElementById('a-cp').value=zcp;document.getElementById('a-carb').value=carb;
 msg.textContent=`${t.nombre} station(s) — ${zl} · ${carb.toUpperCase()}`;
 const max=t.max,per=s.prix_perimes||0,rup=(s.ruptures||[]).length;
 const ouv=s.stations.filter(x=>x.affluence&&x.affluence.ouvert).length;
@@ -225,14 +232,14 @@ const setA=a=>localStorage.setItem('alertes',JSON.stringify(a));
 function renderA(){
 const a=getA();
 alBox.innerHTML=a.length?a.map((x,i)=>`<div class="st"><div class="top"><b>${x.cp} · ${x.carburant.toUpperCase()} · ≤ ${pf(x.seuil)} €</b><button data-i="${i}" style="padding:4px 12px">✕</button></div></div>`).join(''):'<span class="addr">Aucune alerte.</span>';
-alBox.querySelectorAll('button').forEach(b=>b.onclick=()=>{const l=getA();l.splice(+b.dataset.i,1);setA(l);renderA();});
+alBox.querySelectorAll('button').forEach(b=>b.onclick=()=>{if(!confirm('Supprimer cette alerte ?'))return;const l=getA();l.splice(+b.dataset.i,1);setA(l);renderA();});
 }
 async function checkAlertes(cp,carb){
 const list=getA().filter(x=>x.cp===cp&&x.carburant===carb),el=document.getElementById('notif');
 el.hidden=true;if(!list.length||!cp)return;
 for(const a of list){
 try{
-const r=await fetch(`/alertes/check?${zoneP()}&carburant=${carb}&seuil=${a.seuil}`),d=await r.json();
+const r=await fetch(`/alertes/check?cp=${a.cp}&carburant=${a.carburant}&seuil=${a.seuil}`),d=await r.json();
 if(r.ok&&d.declenchee){
 el.hidden=false;
 el.innerHTML=`<b>🔔 Alerte prix : ${pf(d.min)} € ≤ ${pf(a.seuil)} € (${cp} · ${carb.toUpperCase()})</b>`;
@@ -243,11 +250,16 @@ break;}
 }
 fa.addEventListener('submit',async e=>{
 e.preventDefault();
-const carb=document.getElementById('carb').value,
+const carb=document.getElementById('a-carb').value,
+cp=document.getElementById('a-cp').value.trim(),
 seuil=parseFloat(document.getElementById('seuil').value);
-const cp=pos?((lastStations[0]||{}).cp||'') :document.getElementById('cp').value.trim();
-if(!cp){msga.textContent='Lance d\u2019abord une recherche pour fixer la zone.';msga.className='err';return;}
-if(!(seuil>0)){msga.textContent='Seuil invalide.';msga.className='err';return;}
+document.getElementById('e-cp').textContent='';
+document.getElementById('e-seuil').textContent='';
+msga.textContent='';msga.className='';
+let ok=true;
+if(!/^\d{5}$/.test(cp)){document.getElementById('e-cp').textContent='Code postal invalide : 5 chiffres attendus.';ok=false;}
+if(!(seuil>0)){document.getElementById('e-seuil').textContent='Seuil invalide : entre un prix supérieur à 0.';ok=false;}
+if(!ok)return;
 if('Notification' in window&&Notification.permission==='default')await Notification.requestPermission();
 const l=getA();
 if(!l.some(x=>x.cp===cp&&x.carburant===carb&&+x.seuil===seuil))l.push({cp,carburant:carb,seuil});
