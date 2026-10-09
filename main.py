@@ -5,8 +5,10 @@ from zoneinfo import ZoneInfo
 import httpx
 from fastapi import FastAPI, Query
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="API Carburants")
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 DATA_URL = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records"
 CARBURANTS = {"gazole", "sp95", "e10", "sp98", "e85", "gplc"}

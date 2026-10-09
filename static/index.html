@@ -6,33 +6,7 @@
 <title>API Carburants — Essence la moins chère</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
-:root{--accent:#16a34a;--bg:#f4f6f8;--card:#fff;--text:#1f2937;--muted:#6b7280}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
-.wrap{max-width:800px;margin:0 auto;padding:24px 16px 48px}
-h1{margin:0 0 4px;font-size:1.7rem}.sub{color:var(--muted);margin:0 0 20px}
-form{display:flex;gap:8px;flex-wrap:wrap;background:var(--card);padding:14px;border-radius:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-input,select{flex:1;min-width:140px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:1rem}
-button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 20px;font-size:1rem;cursor:pointer}
-button:hover{filter:brightness(.95)}.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
-.card{background:var(--card);border-radius:14px;padding:14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-.card .label{font-size:.8rem;color:var(--muted)}.card .val{font-size:1.4rem;font-weight:700}
-.card.hl{border:2px solid var(--accent)}#stations{display:grid;gap:10px}
-.st{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-.st .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.st .prix{font-size:1.5rem;font-weight:800}.st .addr{color:var(--muted);font-size:.9rem}
-.badge{background:var(--accent);color:#fff;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:999px}
-.badge.old{background:#f59e0b}.badge.rup{background:#b91c1c}
-.badge.fl{background:#16a34a}.badge.mo{background:#f59e0b}.badge.de{background:#dc2626}.badge.fe{background:#6b7280}
-.fiab{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.itin{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
-.itin a{flex:1;min-width:90px;text-align:center;text-decoration:none;font-size:.85rem;font-weight:600;padding:8px;border-radius:10px;background:var(--bg);color:var(--text);border:1px solid #e5e7eb}
-.st{cursor:pointer}
-.eco{color:var(--accent);font-weight:600;font-size:.9rem}
-#msg{text-align:center;color:var(--muted);margin:16px 0}.err{color:#b91c1c!important}
-#map{height:320px;border-radius:14px;margin:16px 0;box-shadow:0 2px 10px rgba(0,0,0,.06);z-index:0}
-@media(max-width:560px){.cards{grid-template-columns:1fr 1fr 1fr}.card .val{font-size:1.1rem}form{flex-direction:column}}
-</style>
+<link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
 <div class="wrap">

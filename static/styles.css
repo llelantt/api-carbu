@@ -1,0 +1,63 @@
+/* Système de design repris de la maquette MVP : tokens, clair/sombre auto, cartes, boutons, pastilles. */
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#eef1f4;--card:#fff;--ink:#14202b;--mut:#5b6b78;--line:#d5dce2;
+  --acc:#1b5fd6;--board:#10161c;--led:#ffb703;
+  --accent:#16a34a;--muted:var(--mut);--text:var(--ink);
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e141a;--card:#17202a;--ink:#e8eef3;--mut:#93a3b0;--line:#27333f;--acc:#6ea0ff;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e141a;--card:#17202a;--ink:#e8eef3;--mut:#93a3b0;--line:#27333f;--acc:#6ea0ff;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:800px;margin:0 auto;padding:24px 16px 48px}
+h1{margin:0 0 4px;font:700 28px/1.1 "Barlow Semi Condensed",Barlow,system-ui,sans-serif}
+h2{font:700 20px "Barlow Semi Condensed",Barlow,system-ui,sans-serif;margin:28px 0 4px}
+.sub{color:var(--mut);margin:0 0 20px;font-size:.9rem}
+form,.card,.st{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+form{display:flex;gap:8px;flex-wrap:wrap}
+input,select{flex:1;min-width:140px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:1rem;color:var(--ink)}
+button{font:inherit;cursor:pointer}
+button[type="submit"]{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:10px 20px;font-size:1rem;font-weight:600}
+button[type="submit"]:hover{filter:brightness(.95)}
+button[type="button"]{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:10px 16px;font-size:.9rem;font-weight:600}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.card{text-align:center}
+.card .label{font-size:.8rem;color:var(--mut)}
+.card .val{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+.card.hl{border:2px solid var(--accent)}
+#stations{display:grid;gap:8px}
+.st .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.st .prix{background:var(--board);color:var(--led);font:700 22px/1 "Barlow Semi Condensed",Barlow,system-ui,sans-serif;letter-spacing:.04em;padding:7px 10px;border-radius:6px;font-variant-numeric:tabular-nums}
+.st .addr{color:var(--mut);font-size:13px;margin-top:2px}
+.badge{font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);color:var(--ink)}
+.badge.old{background:#f59e0b;border-color:#f59e0b;color:#fff}
+.badge.rup{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.badge.fl{background:#16a34a;border-color:#16a34a;color:#fff}
+.badge.mo{background:#f59e0b;border-color:#f59e0b;color:#fff}
+.badge.de{background:#dc2626;border-color:#dc2626;color:#fff}
+.badge.fe{background:#6b7280;border-color:#6b7280;color:#fff}
+.st .top .badge{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.fiab{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.itin{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;font-size:.85rem;font-weight:600}
+.itin a{flex:1;min-width:90px;text-align:center;text-decoration:none;padding:8px;border-radius:999px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
+.st{cursor:pointer}
+.eco{color:var(--accent);font-weight:600;font-size:.9rem;margin-top:2px}
+#msg{text-align:center;color:var(--mut);margin:16px 0;font-size:13px}
+.err{color:#b91c1c!important}
+#map{height:320px;border-radius:10px;border:1px solid var(--line);margin:16px 0;z-index:0;background:var(--card);padding:0}
+@media(max-width:560px){
+  .cards{grid-template-columns:1fr 1fr 1fr}
+  .card .val{font-size:1.1rem}
+  form{flex-direction:column}
+}
+@media(prefers-reduced-motion:no-preference){.st{transition:box-shadow .15s}}
