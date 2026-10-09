@@ -87,6 +87,17 @@ const u={w:`https://waze.com/ul?ll=${dest}&navigate=yes`,g:`https://www.google.c
 return `Y aller : <a href="${u.w}" target="_blank" rel="noopener">Waze</a><a href="${u.g}" target="_blank" rel="noopener">Google Maps</a><a href="${u.p}" target="_blank" rel="noopener">Plans</a>`;};
 const pf=n=>Number(n).toFixed(3).replace('.',',');
 const pf2=n=>Number(n).toFixed(2).replace('.',',');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fuelsRows=x=>Object.entries(x.carburants||{}).map(([c,f])=>`<div class="fuel"><span>${c.toUpperCase()}</span><span>${f.prix!=null?`<span class="led sm">${pf(f.prix)} €</span>`:'<span class="addr">—</span>'}</span><span>${f.perime?`<span class="badge old">Prix ancien (${f.jours} j)</span>`:''}${f.rupture?`<span class="badge rup">Rupture ${f.rupture}</span>`:''}</span></div>`).join('');
+function curve(h){
+h=h||[];
+if(h.length<2)return '<p class="addr">Historique insuffisant : reviens après quelques recherches.</p>';
+const W=300,H=90,P=10;
+const ys=h.map(p=>p.prix),mn=Math.min(...ys),mx=Math.max(...ys),rg=(mx-mn)||0.001;
+const X=i=>P+i*(W-2*P)/(h.length-1),Y=v=>H-P-(v-mn)/rg*(H-2*P);
+const pts=h.map((p,i)=>`${X(i).toFixed(1)},${Y(p.prix).toFixed(1)}`).join(' ');
+const d0=h[0].date.slice(5,10).replace('-','/'),d1=h[h.length-1].date.slice(5,10).replace('-','/');
+return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Historique des prix"><polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2"/>${h.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.prix).toFixed(1)}" r="3" fill="var(--acc)"/>`).join('')}<text x="${P}" y="${H-1}" font-size="9" fill="var(--mut)">${d0}</text><text x="${W-P}" y="${H-1}" font-size="9" text-anchor="end" fill="var(--mut)">${d1}</text><text x="${W-P}" y="12" font-size="9" text-anchor="end" fill="var(--mut)">${pf(mx)} €</text></svg>`;}
 let sort='tot',lastS=null,lastT=null,lastMax=0,lastL=50;
 function sortedStations(){
 const a=[...lastS];
@@ -104,11 +115,16 @@ ${x.prix===mn?'<span class="badge">Meilleur prix</span>':''}</div>
 <div class="fiab">${x.perime?`<span class="badge old">Prix vieux de ${x.jours} j</span>`:''}${x.rupture?`<span class="badge rup">Rupture ${x.rupture}</span>`:''}${x.affluence?affBadge(x.affluence):''}</div>
 <div class="tot">Plein ${lastL} L : ${pf2(x.total_cost)} €${x.distance_km!=null?' détour inclus':''}</div>
 <div class="eco">${x.prix===mn?'—':`Économie : ${pf2((lastMax-x.prix)*lastL)} € sur un plein de ${lastL} L`}</div>
-<div class="itin" hidden>${navLinks(x)}</div>
+<div class="detail" hidden>
+<div class="fuels">${fuelsRows(x)}</div>
+${(x.services||[]).length?`<div class="fiab">${x.services.map(s=>`<span class="badge">${esc(s)}</span>`).join('')}</div>`:''}
+<div class="curve">${curve(x.histo)}</div>
+<div class="itin">${navLinks(x)}</div>
+</div>
 </div>`).join('');
 box.querySelectorAll('.st').forEach(el=>el.addEventListener('click',e=>{
 if(e.target.closest('a'))return;
-el.querySelector('.itin').hidden=!el.querySelector('.itin').hidden;}));
+el.querySelector('.detail').hidden=!el.querySelector('.detail').hidden;}));
 drawPlan(arr);}
 document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
 sort=b.dataset.s;
@@ -142,7 +158,7 @@ function selectStation(i){
 sel=i;
 box.querySelectorAll('.st').forEach(el=>el.classList.toggle('sel',+el.dataset.i===i));
 const card=box.querySelector(`.st[data-i="${i}"]`);
-if(card){card.scrollIntoView({block:'nearest',behavior:'smooth'});card.querySelector('.itin').hidden=false;}
+if(card){card.scrollIntoView({block:'nearest',behavior:'smooth'});card.querySelector('.detail').hidden=false;}
 if(lastS)drawPlan(sortedStations());}
 document.getElementById('dt').addEventListener('change',e=>{
 document.getElementById('dopts').style.display=e.target.checked?'flex':'none';});

@@ -67,6 +67,10 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{ou
 #map{border-radius:10px;border:1px solid var(--line);margin:16px 0;background:var(--card);padding:8px}
 #map svg{width:100%;height:auto;display:block}
 .st.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
+.detail{margin-top:8px;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:8px}
+.fuels{display:grid;gap:4px}
+.fuel{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:.9rem;font-weight:600}
+.curve svg{width:100%;height:auto;display:block}
 @media(max-width:560px){
   .cards{grid-template-columns:1fr 1fr 1fr}
   .card .val{font-size:1.1rem}

@@ -75,11 +75,20 @@ async def fetch_stations(cp, carburant, lat=None, lon=None, dist=10):
         ouv = ouvert_actuellement(x.get("horaires"), x.get("horaires_automate_24_24"))
         serv = x.get("services_service") or []
         g = x.get("geom") or {}
-        stations.append({"adresse": x.get("adresse"), "ville": x.get("ville"),
+        fuels = {}
+        for c in sorted(CARBURANTS):
+            p, m = x.get(f"{c}_prix"), x.get(f"{c}_maj")
+            rt = x.get(f"{c}_rupture_type")
+            if p is None and not x.get(f"{c}_rupture_debut") and not rt:
+                continue
+            jj = jours_depuis(m)
+            fuels[c] = {"prix": p, "date": m, "jours": jj,
+                        "perime": jj is not None and jj > SEUIL_FRAICHEUR, "rupture": rt}
+        stations.append({"id": str(x.get("id")), "adresse": x.get("adresse"), "ville": x.get("ville"),
                          "cp": x.get("cp"), "prix": prix, "date": x.get(maj_col),
                          "lat": g.get("lat"), "lon": g.get("lon"), "jours": j,
                          "perime": j is not None and j > SEUIL_FRAICHEUR,
-                         "rupture": rtype,
+                         "rupture": rtype, "services": serv, "carburants": fuels,
                          "distance_km": (haversine(lat, lon, g.get("lat"), g.get("lon"))
                                          if geo and g.get("lat") is not None else None),
                          "affluence": calc_affluence(ouv, x.get("pop"), len(serv))})
@@ -147,15 +156,12 @@ def load_histo():
         return {}
 
 
-def record_histo(cp, carburant, mini, moyenne, lat=None, lon=None):
+def push_point(key, entry):
     try:
         import json
         h = load_histo()
-        key = zone_key(cp, carburant, lat, lon)
         pts = h.get(key, [])
-        today = date.today().isoformat()
-        entry = {"date": today, "min": mini, "moyenne": moyenne}
-        if pts and pts[-1]["date"] == today:
+        if pts and pts[-1]["date"] == entry["date"]:
             pts[-1] = entry
         else:
             pts.append(entry)
@@ -163,6 +169,20 @@ def record_histo(cp, carburant, mini, moyenne, lat=None, lon=None):
         HISTO_FILE.write_text(json.dumps(h))
     except OSError:
         pass
+
+
+def record_histo(cp, carburant, mini, moyenne, lat=None, lon=None):
+    push_point(zone_key(cp, carburant, lat, lon),
+               {"date": date.today().isoformat(), "min": mini, "moyenne": moyenne})
+
+
+def record_station(sid, carburant, prix):
+    push_point(f"st:{sid}|{carburant.lower()}",
+               {"date": date.today().isoformat(), "prix": prix})
+
+
+def get_station_histo(sid, carburant):
+    return load_histo().get(f"st:{sid}|{carburant.lower()}", [])[-30:]
 
 
 def calc_prevision(cp, carburant, lat=None, lon=None):
@@ -265,6 +285,8 @@ async def stations(
     for s in data:
         km_ar = 2 * s["distance_km"] if s.get("distance_km") is not None else 0.0
         s["total_cost"] = total_cout(s["prix"], km_ar, conso, plein)
+        record_station(s["id"], carburant, s["prix"])
+        s["histo"] = get_station_histo(s["id"], carburant)
     near = min([s for s in data if s.get("distance_km") is not None],
                key=lambda s: s["distance_km"], default=None)
     for s in data:
