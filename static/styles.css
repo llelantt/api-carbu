@@ -65,8 +65,21 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
 .tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .err{color:#b91c1c!important}
-#map{border-radius:10px;border:1px solid var(--line);margin:16px 0;background:var(--card);padding:8px}
-#map svg{width:100%;height:auto;display:block}
+#geo{width:100%;display:none;gap:8px;align-items:center;flex-wrap:wrap}
+#geo select{flex:none;min-width:0}
+#unclear{color:var(--mut)}
+.checkline{width:100%;display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--mut)}
+.checkline input{flex:none;width:auto;min-width:0}
+#dopts{width:100%;gap:8px;flex-wrap:wrap;display:none}
+#alertes{display:grid;gap:8px}
+.bd-green{border:2px solid var(--accent);margin-bottom:10px}
+.bd-amber{border:2px solid #f59e0b;margin-bottom:10px}
+.bd-blue{border:2px solid #2563eb;margin-bottom:10px}
+.icon-btn{padding:4px 12px}
+.pill{background:#fff;color:#1f2937;border:2px solid #6b7280;border-radius:999px;padding:2px 8px;font-weight:800;font-size:12px;white-space:nowrap}
+.pill.best{background:#16a34a;color:#fff;border-color:#16a34a}
+#map{height:340px;border-radius:10px;border:1px solid var(--line);margin:16px 0;background:var(--card);padding:8px;overflow:hidden}
+#map svg{width:100%;height:100%;display:block}
 .st.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
 .detail{margin-top:8px;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:8px}
 .fuels{display:grid;gap:4px}

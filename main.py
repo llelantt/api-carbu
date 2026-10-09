@@ -10,6 +10,17 @@ from fastapi.staticfiles import StaticFiles
 app = FastAPI(title="API Carburants")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; "
+       "img-src 'self' https://tile.openstreetmap.org; connect-src 'self'")
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    resp = await call_next(request)
+    resp.headers["Content-Security-Policy"] = CSP
+    resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return resp
+
 DATA_URL = "https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records"
 CARBURANTS = {"gazole", "sp95", "e10", "sp98", "e85", "gplc"}
 HISTO_FILE = Path(__file__).parent / "historique.json"

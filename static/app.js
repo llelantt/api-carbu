@@ -87,7 +87,7 @@ const hasDOM = typeof document !== 'undefined' && typeof document.getElementById
 let f = null, msg = null, box = null, cards = null;
 let fa = null, msga = null, alBox = null;
 let pos = null, lastStations = [];
-let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50;
+let sort = 'tot', mode = 'plan', lastS = null, lastT = null, lastMax = 0, lastL = 50;
 let sel = null, ctl = null, req = 0;
 const jd = async r => { try { return await r.json() } catch { return {} } };
 
@@ -114,6 +114,7 @@ function renderList() {
   drawPlan(arr);
 }
 function drawPlan(arr) {
+  if (mode === 'carte' && typeof window !== 'undefined' && window.L) { drawLeaflet(arr); return; }
   const el = document.getElementById('map');
   const pts = arr.map((x, i) => ({ ...x, _i: i })).filter(x => x.lat != null && x.lon != null);
   if (!pts.length) { el.hidden = true; return; }
@@ -139,12 +140,41 @@ function selectStation(i) {
   }
   if (lastS) drawPlan(sortedStations());
 }
+let lmap = null, llayer = null;
+function drawLeaflet(arr) {
+  const el = document.getElementById('map');
+  const pts = arr.map((x, i) => ({ x, i })).filter(o => o.x.lat != null && o.x.lon != null);
+  if (!pts.length) { el.hidden = true; return; }
+  el.hidden = false;
+  if (!lmap) {
+    lmap = window.L.map('map');
+    window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(lmap);
+  }
+  if (llayer) llayer.clearLayers(); else llayer = window.L.layerGroup().addTo(lmap);
+  const pill = (p, best) => window.L.divIcon({ className: '', html: `<div class="pill${best ? ' best' : ''}">${pf2(p)} €</div>`, iconSize: null });
+  const bounds = [];
+  pts.forEach(({ x, i }) => {
+    bounds.push([x.lat, x.lon]);
+    const m = window.L.marker([x.lat, x.lon], { icon: pill(x.prix, i === 0) }).addTo(llayer);
+    m.bindPopup(`<b>${pf(x.prix)} €</b><br>${esc(x.adresse)}<br>${esc(x.ville)}`);
+    m.on('click', () => selectStation(i));
+  });
+  if (pos) {
+    bounds.push([pos.lat, pos.lon]);
+    window.L.circleMarker([pos.lat, pos.lon], { radius: 8, color: '#2563eb', fillColor: '#2563eb', fillOpacity: 1 }).addTo(llayer).bindPopup('Toi');
+  }
+  lmap.fitBounds(bounds, { padding: [30, 30] });
+  setTimeout(() => lmap.invalidateSize(), 100);
+}
 
 const getA = () => { try { return JSON.parse(localStorage.getItem('alertes') || '[]') } catch { return [] } };
 const setA = a => localStorage.setItem('alertes', JSON.stringify(a));
 function renderA() {
   const a = getA();
-  alBox.innerHTML = a.length ? a.map((x, i) => `<div class="st"><div class="top"><b>${esc(x.cp)} · ${esc(x.carburant).toUpperCase()} · ≤ ${pf(x.seuil)} €</b><button data-i="${i}" style="padding:4px 12px">✕</button></div></div>`).join('') : '<span class="addr">Aucune alerte.</span>';
+  alBox.innerHTML = a.length ? a.map((x, i) => `<div class="st"><div class="top"><b>${esc(x.cp)} · ${esc(x.carburant).toUpperCase()} · ≤ ${pf(x.seuil)} €</b><button class="icon-btn" data-i="${i}">✕</button></div></div>`).join('') : '<span class="addr">Aucune alerte.</span>';
   alBox.querySelectorAll('button').forEach(b => b.onclick = () => { if (!confirm('Supprimer cette alerte ?')) return; const l = getA(); l.splice(+b.dataset.i, 1); setA(l); renderA(); });
 }
 async function checkAlertes(cp, carb) {
@@ -188,10 +218,15 @@ if (hasDOM) {
   document.getElementById('dt').addEventListener('change', e => {
     document.getElementById('dopts').style.display = e.target.checked ? 'flex' : 'none';
   });
-  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#sortTabs button').forEach(b => b.addEventListener('click', () => {
     sort = b.dataset.s;
-    document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    document.querySelectorAll('#sortTabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
     if (lastS) renderList();
+  }));
+  document.querySelectorAll('#mapTabs button').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.m;
+    document.querySelectorAll('#mapTabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    if (lastS) drawPlan(sortedStations());
   }));
 
   f.addEventListener('submit', async e => {
