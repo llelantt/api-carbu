@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, markerClass,
+  esc, pf, pf2, ruptureLabel, markerClass,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -48,6 +48,16 @@ describe('classe marqueur', () => {
   it('prix égaux -> mk0, borné à mk4', () => {
     expect(markerClass(1.5, 1.5, 1.5)).toBe('mk0');
     expect(markerClass(9, 1, 2)).toBe('mk4');
+  });
+});
+
+describe('ruptureLabel', () => {
+  it('accentue definitive et temporaire', () => {
+    expect(ruptureLabel('definitive')).toBe('définitive');
+    expect(ruptureLabel('temporaire')).toBe('temporaire');
+  });
+  it('laisse passer les valeurs inconnues', () => {
+    expect(ruptureLabel('autre')).toBe('autre');
   });
 });
 

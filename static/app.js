@@ -6,6 +6,7 @@
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const pf = n => Number(n).toFixed(3).replace('.', ',');
 export const pf2 = n => Number(n).toFixed(2).replace('.', ',');
+export const ruptureLabel = r => ({ definitive: 'définitive', temporaire: 'temporaire' }[r] || r);
 
 // ---------- plan SVG ----------
 export function markerClass(p, mn, mx) {
@@ -23,7 +24,7 @@ export const navLinks = x => {
   const u = { w: `https://waze.com/ul?ll=${dest}&navigate=yes`, g: `https://www.google.com/maps/dir/?api=1&destination=${dest}`, p: `https://maps.apple.com/?daddr=${dest}` };
   return `Y aller : <a href="${u.w}" target="_blank" rel="noopener">Waze</a><a href="${u.g}" target="_blank" rel="noopener">Google Maps</a><a href="${u.p}" target="_blank" rel="noopener">Plans</a>`;
 };
-export const fuelsRows = x => Object.entries(x.carburants || {}).map(([c, f]) => `<div class="fuel"><span>${c.toUpperCase()}</span><span>${f.prix != null ? `<span class="led sm">${pf(f.prix)} €</span>` : '<span class="dash">—</span>'}</span><span>${f.perime ? `<span class="badge old">Prix ancien (${f.jours} j)</span>` : ''}${f.rupture ? `<span class="badge rup">Rupture ${esc(f.rupture)}</span>` : ''}</span></div>`).join('');
+export const fuelsRows = x => Object.entries(x.carburants || {}).map(([c, f]) => `<div class="fuel"><span>${c.toUpperCase()}</span><span>${f.prix != null ? `<span class="led sm">${pf(f.prix)} €</span>` : '<span class="dash">—</span>'}</span><span>${f.perime ? `<span class="badge old">Prix ancien (${f.jours} j)</span>` : ''}${f.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(f.rupture))}</span>` : ''}</span></div>`).join('');
 export function curve(h) {
   h = h || [];
   if (h.length < 2) return '<p class="addr">Historique insuffisant : reviens après quelques recherches.</p>';
@@ -40,7 +41,7 @@ export function stationsHTML(arr, { mn, mx, L }) {
 ${x.prix === mn ? '<span class="badge">Meilleur prix</span>' : ''}</div>
 <div><b>${esc(x.adresse) || 'Adresse inconnue'}</b></div>
 <div class="addr">${esc(x.ville)}${x.distance_km != null ? ` · à ${String(x.distance_km).replace('.', ',')} km` : ''} · ${x.date ? new Date(x.date).toLocaleDateString('fr-FR') : ''}${x.jours != null ? ` · il y a ${x.jours} j` : ''}</div>
-<div class="fiab">${x.perime ? `<span class="badge old">Prix vieux de ${x.jours} j</span>` : ''}${x.rupture ? `<span class="badge rup">Rupture ${esc(x.rupture)}</span>` : ''}${x.affluence ? affBadge(x.affluence) : ''}</div>
+<div class="fiab">${x.perime ? `<span class="badge old">Prix vieux de ${x.jours} j</span>` : ''}${x.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(x.rupture))}</span>` : ''}${x.affluence ? affBadge(x.affluence) : ''}</div>
 <div class="tot">Plein ${L} L : ${pf2(x.total_cost)} €${x.distance_km != null ? ' détour inclus' : ''}</div>
 <div class="eco">${x.prix === mn ? '—' : `Économie : ${pf2((mx - x.prix) * L)} € sur un plein de ${L} L`}</div>
 <div class="detail" hidden>

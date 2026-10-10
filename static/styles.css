@@ -93,6 +93,9 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .fuel>span:nth-child(2){text-align:right;font-variant-numeric:tabular-nums}
 .fuel .led{min-width:5.2rem}
 .fuel .dash{color:var(--mut)}
+.fuel>span:nth-child(3){text-align:left}
+.fuel .badge{height:22px;line-height:22px;padding:0 10px;font-size:12px;display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fuel .badge.old{background:transparent;color:var(--mut);border-color:var(--line)}
 .curve svg{width:100%;height:auto;display:block}
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.92)}
