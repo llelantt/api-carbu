@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import FastAPI, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 app = FastAPI(title="API Carburants")
@@ -326,12 +326,15 @@ def calc_detour(prix_proche, km_proche, prix_loin, km_loin, conso=6.5, plein=50)
     }
 
 
+ASSET_V = "3"
+
+
 @app.get("/", include_in_schema=False)
 def index():
-    return FileResponse(
-        Path(__file__).parent / "static" / "index.html",
-        headers={"Cache-Control": "no-store"},
-    )
+    html = (Path(__file__).parent / "static" / "index.html").read_text()
+    html = html.replace("/static/styles.css", f"/static/styles.css?v={ASSET_V}")
+    html = html.replace("/static/app.js", f"/static/app.js?v={ASSET_V}")
+    return Response(html, media_type="text/html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api")

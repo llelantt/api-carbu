@@ -24,6 +24,12 @@ class SecurityHeaders(unittest.TestCase):
         rp = self.c.get("/").headers.get("referrer-policy")
         self.assertEqual(rp, "strict-origin-when-cross-origin")
 
+    def test_index_no_cache_et_assets_versionnes(self):
+        r = self.c.get("/")
+        self.assertEqual(r.headers.get("cache-control"), "no-cache")
+        self.assertIn("styles.css?v=", r.text)
+        self.assertIn("app.js?v=", r.text)
+
     def test_no_cdn(self):
         html = self.c.get("/").text
         for bad in ("unpkg.com", "cdnjs.cloudflare.com", "cdn.jsdelivr.net", "fonts.googleapis.com"):

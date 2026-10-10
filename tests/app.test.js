@@ -496,3 +496,21 @@ describe('interactions carte/panneau', () => {
     expect(document.getElementById('sheet').hidden).toBe(true);
   });
 });
+
+describe('page servie', () => {
+  it('assets versionnés, panneau caché au chargement', async () => {
+    const fs = await import('node:fs');
+    let html = fs.readFileSync('static/index.html', 'utf8');
+    const css = fs.readFileSync('static/styles.css', 'utf8');
+    html = html.replace('/static/styles.css', '/static/styles.css?v=3');
+    html = html.replace('/static/app.js', '/static/app.js?v=3');
+    expect(html).toContain('styles.css?v=');
+    expect(html).toContain('app.js?v=');
+    html = html.replace(/<script[^>]*src[^>]*><\/script>/g, '');
+    html = html.replace('</head>', `<style>${css}</style></head>`);
+    document.documentElement.innerHTML = html;
+    const sheet = document.getElementById('sheet');
+    expect(sheet.hidden).toBe(true);
+    expect(getComputedStyle(sheet).display).toBe('none');
+  });
+});
