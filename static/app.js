@@ -59,6 +59,9 @@ ${(x.services || []).length ? `<div class="fiab">${x.services.map(s => `<span cl
 export function suggestHTML(fs) {
   return (fs || []).map((f, i) => `<button type="button" data-i="${i}">${esc(f.properties && f.properties.label || 'Adresse')}</button>`).join('');
 }
+export function zoneSentence(nombre, dist, lieu, carb) {
+  return `${nombre} station(s) dans un rayon de ${dist} km autour de ${lieu} · ${carb.toUpperCase()}`;
+}
 export function previsionLine(p) {
   if (p.tendance === 'inconnu' || p.points < 2) return "Tendance 7 j : — · pas encore assez d'historique";
   return `Tendance 7 j : ${p.tendance} (${p.variation >= 0 ? '+' : ''}${pf(p.variation)} €) · ${p.points} relevé(s)`;
@@ -84,6 +87,7 @@ let f = null, msg = null, box = null, cards = null;
 let fa = null, msga = null, alBox = null;
 let pos = null, lastStations = [];
 let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50, lastCarb = '';
+let lastCenter = null, lastDist = 0;
 let sel = null, ctl = null, req = 0;
 const jd = async r => { try { return await r.json() } catch { return {} } };
 
@@ -203,6 +207,7 @@ function drawLeaflet(arr) {
     tl.addTo(lmap);
   }
   if (llayer) llayer.clearLayers(); else llayer = window.L.layerGroup().addTo(lmap);
+  if (lastCenter) window.L.circle([lastCenter.lat, lastCenter.lon], { radius: lastDist * 1000, color: '#2563eb', weight: 1, fillColor: '#2563eb', fillOpacity: 0.08, interactive: false }).addTo(llayer);
   lmarkers = plan.markers.map(d => {
     const m = window.L.marker([d.lat, d.lon], { icon: window.L.divIcon({ className: '', html: d.html, iconSize: null }) }).addTo(llayer);
     m.bindPopup(d.popup);
@@ -362,7 +367,9 @@ if (hasDOM) {
       cards.hidden = false; lastStations = s.stations;
       zl = zoneL(); zcp = pos ? (s.stations[0].cp || '') : document.getElementById('cp').value.trim();
       document.getElementById('a-cp').value = zcp; document.getElementById('a-carb').value = carb;
-      msg.textContent = `${t.nombre} station(s) — ${zl} · ${carb.toUpperCase()}`;
+      const lieu = (s.centre && s.centre.label) ? s.centre.label : (pos ? 'ta position' : document.getElementById('cp').value.trim());
+      msg.textContent = zoneSentence(t.nombre, s.position.dist, lieu, carb);
+      if (s.stations.length === 1) msg.textContent += ' · Peu de résultats : essaie un rayon plus grand ou un autre carburant.';
       const max = t.max, per = s.prix_perimes || 0, rup = (s.ruptures || []).length;
       const ouv = s.stations.filter(x => x.affluence && x.affluence.ouvert).length;
       if (per || rup) msg.textContent += ` · ${per ? per + ' prix de + de 7 j' : ''}${per && rup ? ' · ' : ''}${rup ? rup + ' station(s) en rupture' : ''}`;
@@ -373,6 +380,7 @@ if (hasDOM) {
         el.innerHTML = `<b>${d.vaut_le_coup ? '✅' : '❌'} ${d.message}</b><br><span class="addr">${esc(lo.adresse)} · ${esc(lo.ville)} · à ${String(lo.distance_km).replace('.', ',')} km · Plein : <span class="led sm">${pf2(lo.total_cost)} €</span> détour inclus · Économie vs plus proche : <span class="led sm">${d.economy_vs_nearest >= 0 ? '+' : ''}${pf2(d.economy_vs_nearest)} €</span></span>`;
       }
       lastS = s.stations; lastT = t; lastMax = t.max; lastL = +vo || 50; lastCarb = carb;
+      if (s.position) { lastCenter = { lat: s.position.lat, lon: s.position.lon }; lastDist = s.position.dist; }
       renderList();
       if (my === req) btn.disabled = false;
     } catch (err) {

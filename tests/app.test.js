@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML,
+  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -200,5 +200,12 @@ describe('suggestHTML', () => {
   });
   it('liste vide -> chaîne vide', () => {
     expect(suggestHTML([])).toBe('');
+  });
+});
+
+describe('zoneSentence', () => {
+  it('phrase exacte', () => {
+    expect(zoneSentence(45, 10, 'Villeparisis', 'gazole'))
+      .toBe('45 station(s) dans un rayon de 10 km autour de Villeparisis · GAZOLE');
   });
 });
