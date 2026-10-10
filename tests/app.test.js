@@ -320,6 +320,11 @@ describe('panneau Y aller', () => {
     expect((h.match(/<a /g) || []).length).toBe(3);
     expect(h).toContain('target="_blank"');
   });
+  it('focus sur la première option à l’ouverture', () => {
+    document.body.innerHTML = '<div id="sheet" hidden><div id="sheet-card"></div></div>';
+    openSheet(station(), null);
+    expect(document.activeElement.tagName).toBe('A');
+  });
 });
 
 describe('liens navigation', () => {

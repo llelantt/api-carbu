@@ -76,7 +76,8 @@ export function openSheet(x, trigger) {
   document.getElementById('sheet').hidden = false;
   sheetTrigger = trigger || null;
   document.getElementById('sheet-cancel').addEventListener('click', closeSheet);
-  document.getElementById('sheet-cancel').focus();
+  const first = card.querySelector('a,button');
+  if (first) first.focus();
 }
 export function closeSheet() {
   document.getElementById('sheet').hidden = true;
@@ -369,6 +370,17 @@ if (hasDOM) {
   });
   document.getElementById('sheet').addEventListener('click', e => {
     if (e.target.id === 'sheet') closeSheet();
+  });
+  document.getElementById('sheet-card').addEventListener('click', e => {
+    if (e.target.closest('a')) closeSheet();
+  });
+  document.getElementById('sheet-card').addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const items = [...document.querySelectorAll('#sheet-card a[href], #sheet-card button')];
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !document.getElementById('sheet').hidden) closeSheet();
