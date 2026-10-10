@@ -24,7 +24,11 @@ export const navLinks = x => {
   const u = { w: `https://waze.com/ul?ll=${dest}&navigate=yes`, g: `https://www.google.com/maps/dir/?api=1&destination=${dest}`, p: `https://maps.apple.com/?daddr=${dest}` };
   return `Y aller : <a href="${u.w}" target="_blank" rel="noopener">Waze</a><a href="${u.g}" target="_blank" rel="noopener">Google Maps</a><a href="${u.p}" target="_blank" rel="noopener">Plans</a>`;
 };
-export const fuelsRows = x => Object.entries(x.carburants || {}).map(([c, f]) => `<div class="fuel"><span>${c.toUpperCase()}</span><span>${f.prix != null ? `<span class="led sm">${pf(f.prix)} €</span>` : '<span class="dash">—</span>'}</span><span>${f.perime ? `<span class="badge old">Prix ancien (${f.jours} j)</span>` : ''}${f.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(f.rupture))}</span>` : ''}</span></div>`).join('');
+export const FUEL_ORDER = ['gazole', 'sp95', 'e10', 'sp98', 'e85', 'gplc'];
+export const fuelName = c => ({ gazole: 'Gazole', sp95: 'SP95', e10: 'E10', sp98: 'SP98', e85: 'E85', gplc: 'GPLc' }[c] || c);
+export const fuelsRows = (x, carb = '') => Object.entries(x.carburants || {})
+  .sort(([a], [b]) => FUEL_ORDER.indexOf(a) - FUEL_ORDER.indexOf(b))
+  .map(([c, f]) => `<div class="fuel${c === carb ? ' cur' : ''}"><span>${fuelName(c)}</span><span>${f.prix != null ? `<span class="led sm">${pf(f.prix)} €</span>` : '<span class="dash">—</span>'}</span><span>${f.perime ? `<span class="badge old">Prix ancien (${f.jours} j)</span>` : ''}${f.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(f.rupture))}</span>` : ''}</span></div>`).join('');
 export function curve(h) {
   h = h || [];
   if (h.length < 2) return '<p class="addr">Historique insuffisant : reviens après quelques recherches.</p>';
@@ -35,7 +39,7 @@ export function curve(h) {
   const d0 = h[0].date.slice(5, 10).replace('-', '/'), d1 = h[h.length - 1].date.slice(5, 10).replace('-', '/');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Historique des prix"><polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2"/>${h.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.prix).toFixed(1)}" r="3" fill="var(--acc)"/>`).join('')}<text x="${P}" y="${H - 1}" font-size="9" fill="var(--mut)">${d0}</text><text x="${W - P}" y="${H - 1}" font-size="9" text-anchor="end" fill="var(--mut)">${d1}</text><text x="${W - P}" y="12" font-size="9" text-anchor="end" fill="var(--mut)">${pf(mx)} €</text></svg>`;
 }
-export function stationsHTML(arr, { mn, mx, L }) {
+export function stationsHTML(arr, { mn, mx, L, carb = '' }) {
   return arr.map((x, i) => `
 <div class="st" data-i="${i}" tabindex="0" role="button" aria-expanded="false"><div class="top"><span class="rk">${i + 1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
 ${x.prix === mn ? '<span class="badge">Meilleur prix</span>' : ''}</div>
@@ -45,7 +49,7 @@ ${x.prix === mn ? '<span class="badge">Meilleur prix</span>' : ''}</div>
 <div class="tot">Plein ${L} L : ${pf2(x.total_cost)} €${x.distance_km != null ? ' détour inclus' : ''}</div>
 <div class="eco">${x.prix === mn ? '—' : `Économie : ${pf2((mx - x.prix) * L)} € sur un plein de ${L} L`}</div>
 <div class="detail" hidden>
-<div class="fuels">${fuelsRows(x)}</div>
+<div class="fuels">${fuelsRows(x, carb)}</div>
 ${(x.services || []).length ? `<div class="fiab">${x.services.map(s => `<span class="badge">${esc(s)}</span>`).join('')}</div>` : ''}
 <div class="curve">${curve(x.histo)}</div>
 <div class="itin">${navLinks(x)}</div>
@@ -76,7 +80,7 @@ const hasDOM = typeof document !== 'undefined' && typeof document.getElementById
 let f = null, msg = null, box = null, cards = null;
 let fa = null, msga = null, alBox = null;
 let pos = null, lastStations = [];
-let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50;
+let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50, lastCarb = '';
 let sel = null, ctl = null, req = 0;
 const jd = async r => { try { return await r.json() } catch { return {} } };
 
@@ -92,7 +96,7 @@ function sortedStations() {
 }
 function renderList() {
   const arr = sortedStations(), mn = lastT.min;
-  box.innerHTML = stationsHTML(arr, { mn, mx: lastMax, L: lastL });
+  box.innerHTML = stationsHTML(arr, { mn, mx: lastMax, L: lastL, carb: lastCarb });
   box.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
     if (e.target.closest('a')) return;
     const d = el.querySelector('.detail'); d.hidden = !d.hidden; el.setAttribute('aria-expanded', !d.hidden);
@@ -306,7 +310,7 @@ if (hasDOM) {
         el.hidden = false;
         el.innerHTML = `<b>${d.vaut_le_coup ? '✅' : '❌'} ${d.message}</b><br><span class="addr">${esc(lo.adresse)} · ${esc(lo.ville)} · à ${String(lo.distance_km).replace('.', ',')} km · Plein : <span class="led sm">${pf2(lo.total_cost)} €</span> détour inclus · Économie vs plus proche : <span class="led sm">${d.economy_vs_nearest >= 0 ? '+' : ''}${pf2(d.economy_vs_nearest)} €</span></span>`;
       }
-      lastS = s.stations; lastT = t; lastMax = t.max; lastL = +vo || 50;
+      lastS = s.stations; lastT = t; lastMax = t.max; lastL = +vo || 50; lastCarb = carb;
       renderList();
       if (my === req) btn.disabled = false;
     } catch (err) {

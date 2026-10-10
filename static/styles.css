@@ -88,7 +88,10 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 #map{height:340px;border-radius:10px;border:1px solid var(--line);margin:16px 0;background:var(--card);padding:8px;overflow:hidden}
 .st.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
 .detail{margin-top:8px;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:8px}
-.fuels{display:grid;gap:4px}
+.fuels{display:grid}
+.fuel{height:40px}
+.fuel+.fuel{border-top:1px solid var(--line)}
+.fuel.cur{box-shadow:inset 3px 0 0 var(--acc)}
 .fuel{display:grid;grid-template-columns:minmax(0,1fr) 6.5rem 9.5rem;align-items:center;column-gap:12px;font-size:.9rem;font-weight:600}
 .fuel>span:nth-child(2){text-align:right;font-variant-numeric:tabular-nums}
 .fuel .led{min-width:5.2rem}

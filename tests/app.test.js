@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, ruptureLabel, markerClass,
+  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -58,6 +58,26 @@ describe('ruptureLabel', () => {
   });
   it('laisse passer les valeurs inconnues', () => {
     expect(ruptureLabel('autre')).toBe('autre');
+  });
+});
+
+describe('fuelsRows', () => {
+  const x = { carburants: {
+    sp98: { prix: 2.1, date: null, jours: 1, perime: false, rupture: null },
+    gazole: { prix: 1.9, date: null, jours: 1, perime: false, rupture: null },
+    e85: { prix: null, date: null, jours: null, perime: false, rupture: 'definitive' },
+  } };
+  it('noms normaux et ordre fixe', () => {
+    const html = fuelsRows(x);
+    expect(html).toContain('>Gazole<');
+    expect(html).toContain('>SP98<');
+    expect(html.indexOf('Gazole')).toBeLessThan(html.indexOf('SP98'));
+    expect(html.indexOf('SP98')).toBeLessThan(html.indexOf('E85'));
+    expect(html).not.toContain('GAZOLE');
+  });
+  it('surligne le carburant cherché', () => {
+    expect(fuelsRows(x, 'e85')).toContain('fuel cur');
+    expect(fuelsRows(x, '')).not.toContain('cur');
   });
 });
 
