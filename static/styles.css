@@ -20,6 +20,7 @@
   --bg:#0e141a;--card:#17202a;--ink:#e8eef3;--mut:#93a3b0;--line:#27333f;--acc:#6ea0ff;--onacc:#08121f;--eco:#4ade80;
 }
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 Barlow,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .wrap{max-width:800px;margin:0 auto;padding:24px 16px 48px}
@@ -39,7 +40,7 @@ button[type="button"]{background:var(--bg);color:var(--ink);border:1px solid var
 .tabs button{border-radius:999px;padding:5px 12px;font-size:13px;height:auto}
 #loc{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;height:36px;padding:0 14px;font-size:14px;font-weight:600}
 button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.st[role="button"]:focus-visible,circle:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.cards:not([hidden]){display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
 .card{text-align:center}
 .card .label{font-size:.8rem;color:var(--mut)}
 .card .val{background:var(--board);color:var(--led);font:700 20px/1 "Barlow Semi Condensed",Barlow,system-ui,sans-serif;letter-spacing:.04em;padding:7px 10px;border-radius:6px;font-variant-numeric:tabular-nums}
@@ -71,7 +72,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .st{cursor:pointer}
 .st:hover{border-color:var(--acc)}
 .go{text-align:right;font-size:.8rem;color:var(--mut);margin-top:6px}
-.sheet-back{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;z-index:1000;align-items:center;justify-content:center;padding:16px}
+.sheet-back:not([hidden]){position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;z-index:1000;align-items:center;justify-content:center;padding:16px}
 .sheet{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:8px;width:100%;max-width:420px}
 .sheet h2{margin:0;font-size:18px}
 .sheet a{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink);font-weight:600;background:var(--bg)}
@@ -113,7 +114,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .mk.sel{box-shadow:0 0 0 3px var(--acc)}
 #map{height:340px;border-radius:10px;border:1px solid var(--line);margin:16px 0;background:var(--card);padding:8px;overflow:hidden}
 .st.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
-.detail{margin-top:8px;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:8px}
+.detail:not([hidden]){margin-top:8px;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:8px}
 .fuels{display:grid}
 .fuel{height:40px}
 .fuel+.fuel{border-top:1px solid var(--line)}
