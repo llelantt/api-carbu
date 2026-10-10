@@ -56,6 +56,9 @@ ${(x.services || []).length ? `<div class="fiab">${x.services.map(s => `<span cl
 </div>
 </div>`).join('');
 }
+export function suggestHTML(fs) {
+  return (fs || []).map((f, i) => `<button type="button" data-i="${i}">${esc(f.properties && f.properties.label || 'Adresse')}</button>`).join('');
+}
 export function previsionLine(p) {
   if (p.tendance === 'inconnu' || p.points < 2) return "Tendance 7 j : — · pas encore assez d'historique";
   return `Tendance 7 j : ${p.tendance} (${p.variation >= 0 ? '+' : ''}${pf(p.variation)} €) · ${p.points} relevé(s)`;
@@ -258,6 +261,41 @@ if (hasDOM) {
     e.preventDefault();
     pos = null; document.getElementById('cp').disabled = false;
     document.getElementById('geo').style.display = 'none';
+    document.getElementById('adr').value = '';
+    document.getElementById('sugg').innerHTML = '';
+  });
+  let sugT = null, sugCtl = null, lastFs = [];
+  const renderSugg = fs => {
+    lastFs = fs;
+    const bx = document.getElementById('sugg');
+    bx.innerHTML = suggestHTML(fs);
+    bx.querySelectorAll('button').forEach(b => b.addEventListener('click', () => pickAddr(+b.dataset.i)));
+  };
+  const pickAddr = i => {
+    const f = lastFs[i];
+    if (!f || !f.geometry) return;
+    const [lon, lat] = f.geometry.coordinates;
+    pos = { lat: +lat.toFixed(4), lon: +lon.toFixed(4) };
+    document.getElementById('cp').disabled = true;
+    document.getElementById('adr').value = f.properties.label;
+    document.getElementById('sugg').innerHTML = '';
+    document.getElementById('geo').style.display = 'flex';
+    msg.textContent = 'Adresse détectée, clique Rechercher.'; msg.className = '';
+  };
+  document.getElementById('adr').addEventListener('input', e => {
+    const q = e.target.value.trim();
+    clearTimeout(sugT);
+    if (sugCtl) sugCtl.abort();
+    if (q.length < 3) { document.getElementById('sugg').innerHTML = ''; return; }
+    sugT = setTimeout(async () => {
+      try {
+        sugCtl = new AbortController();
+        const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=5`, { signal: sugCtl.signal });
+        const d = await r.json();
+        if ((d.features || []).length) renderSugg(d.features);
+        else document.getElementById('sugg').innerHTML = '<span class="addr">Adresse introuvable, utilise le code postal.</span>';
+      } catch (err) { if (!err || err.name !== 'AbortError') document.getElementById('sugg').innerHTML = '<span class="addr">Géocodage indisponible, utilise le code postal.</span>'; }
+    }, 300);
   });
   document.getElementById('dt').addEventListener('change', e => {
     document.getElementById('dopts').style.display = e.target.checked ? 'flex' : 'none';

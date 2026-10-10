@@ -11,7 +11,8 @@ app = FastAPI(title="API Carburants")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; "
-       "img-src 'self' https://tile.openstreetmap.org; connect-src 'self'")
+       "img-src 'self' https://tile.openstreetmap.org; "
+       "connect-src 'self' https://api-adresse.data.gouv.fr")
 
 
 @app.middleware("http")

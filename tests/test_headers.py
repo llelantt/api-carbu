@@ -15,6 +15,7 @@ class SecurityHeaders(unittest.TestCase):
     def test_csp(self):
         csp = self.c.get("/").headers.get("content-security-policy", "")
         self.assertIn("https://tile.openstreetmap.org", csp)
+        self.assertIn("https://api-adresse.data.gouv.fr", csp)
         self.assertIn("script-src 'self'", csp)
         self.assertIn("style-src 'self'", csp)
         self.assertNotIn("unsafe-inline", csp)

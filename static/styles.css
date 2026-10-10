@@ -72,6 +72,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .err{color:#b91c1c!important}
 #geo{width:100%;display:none;gap:8px;align-items:center;flex-wrap:wrap}
+#sugg{width:100%;display:grid;gap:4px}
+#sugg button{display:flex;justify-content:flex-start;text-align:left}
 #geo select{flex:none;min-width:0}
 #unclear{color:var(--mut)}
 .checkline{width:100%;display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--mut);font-size:14px}

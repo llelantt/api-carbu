@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass,
+  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -185,5 +185,20 @@ describe('leafletPlan', () => {
     expect(p.bounds).toBeNull();
     expect(p.center).toEqual([48.95, 2.6]);
     expect(p.zoom).toBeLessThanOrEqual(16);
+  });
+});
+
+describe('suggestHTML', () => {
+  it('liste les libellés et échappe le HTML', () => {
+    const html = suggestHTML([
+      { properties: { label: '12 Rue de Rivoli 75004 Paris' } },
+      { properties: { label: '<script>alert(1)</script>' } },
+    ]);
+    expect(html).toContain('12 Rue de Rivoli 75004 Paris');
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).not.toContain('<script>alert');
+  });
+  it('liste vide -> chaîne vide', () => {
+    expect(suggestHTML([])).toBe('');
   });
 });
