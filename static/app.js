@@ -36,11 +36,35 @@ export const affBadge = a => {
     : '';
   return `<span role="img" aria-label="Station ${stateLabel}${affLabel}">${st}${aff}</span>`;
 };
-export const navLinks = x => {
+export const navUrls = x => {
   const dest = (x.lat != null && x.lon != null) ? `${x.lat},${x.lon}` : encodeURIComponent(`${x.adresse || ''} ${x.ville || ''}`);
-  const u = { w: `https://waze.com/ul?ll=${dest}&navigate=yes`, g: `https://www.google.com/maps/dir/?api=1&destination=${dest}`, p: `https://maps.apple.com/?daddr=${dest}` };
-  return `Y aller : <a href="${u.w}" target="_blank" rel="noopener">Waze</a><a href="${u.g}" target="_blank" rel="noopener">Google Maps</a><a href="${u.p}" target="_blank" rel="noopener">Plans</a>`;
+  return {
+    Waze: `https://waze.com/ul?ll=${dest}&navigate=yes`,
+    'Google Maps': `https://www.google.com/maps/dir/?api=1&destination=${dest}`,
+    Plans: `https://maps.apple.com/?daddr=${dest}`,
+  };
 };
+export const navLinks = x => 'Y aller : ' + Object.entries(navUrls(x)).map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('');
+export function sheetLinks(x) {
+  return Object.entries(navUrls(x)).map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('');
+}
+let sheetTrigger = null;
+export function openSheet(x, trigger) {
+  const card = document.getElementById('sheet-card');
+  card.innerHTML = `<h2 id="sheet-title">${esc(x.enseigne || x.nom || x.adresse) || 'Station'}</h2>`
+    + `<p class="addr">${esc(x.adresse)} · ${esc(x.ville)}</p>`
+    + sheetLinks(x)
+    + `<button type="button" class="cancel" id="sheet-cancel">Annuler</button>`;
+  document.getElementById('sheet').hidden = false;
+  sheetTrigger = trigger || null;
+  document.getElementById('sheet-cancel').addEventListener('click', closeSheet);
+  document.getElementById('sheet-cancel').focus();
+}
+export function closeSheet() {
+  document.getElementById('sheet').hidden = true;
+  if (sheetTrigger && sheetTrigger.focus) sheetTrigger.focus();
+  sheetTrigger = null;
+}
 export const FUEL_ORDER = ['gazole', 'sp95', 'e10', 'sp98', 'e85', 'gplc'];
 export const fuelName = c => ({ gazole: 'Gazole', sp95: 'SP95', e10: 'E10', sp98: 'SP98', e85: 'E85', gplc: 'GPLc' }[c] || c);
 export const fuelsRows = (x, carb = '') => Object.entries(x.carburants || {})
@@ -132,13 +156,13 @@ function renderList() {
   box.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
     if (e.target.closest('a,button')) return;
     const x = sortedStations()[+el.dataset.i];
-    if (x) console.log('Y aller :', x.enseigne || x.nom || x.adresse, x.ville, x.prix);
+    if (x) openSheet(x, el);
   }));
   box.querySelectorAll('.st').forEach(el => el.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       const x = sortedStations()[+el.dataset.i];
-      if (x) console.log('Y aller :', x.enseigne || x.nom || x.adresse, x.ville, x.prix);
+      if (x) openSheet(x, el);
     }
   }));
   drawPlan(arr);
@@ -325,6 +349,12 @@ if (hasDOM) {
   document.getElementById('dt').addEventListener('change', e => {
     document.getElementById('dopts').style.display = e.target.checked ? 'flex' : 'none';
   });
+  document.getElementById('sheet').addEventListener('click', e => {
+    if (e.target.id === 'sheet') closeSheet();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('sheet').hidden) closeSheet();
+  });
   document.querySelectorAll('#sortTabs button').forEach(b => b.addEventListener('click', () => {
     sort = b.dataset.s;
     document.querySelectorAll('#sortTabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
@@ -344,6 +374,7 @@ if (hasDOM) {
     ctl = new AbortController(); const my = ++req, sig = ctl.signal;
     const btn = f.querySelector('button[type="submit"]'); btn.disabled = true;
     box.innerHTML = ''; cards.hidden = true; document.getElementById('detour').hidden = true; sel = null;
+    document.getElementById('sheet').hidden = true;
     tilesOK = true; tileErrs = 0; document.getElementById('mapwarn').hidden = true;
     document.getElementById('notif').hidden = true; document.getElementById('prev').hidden = true;
     document.getElementById('map').hidden = true;

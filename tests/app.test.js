@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
+  sheetLinks, openSheet, closeSheet,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -285,5 +286,38 @@ describe('zoneSentence', () => {
   it('phrase exacte', () => {
     expect(zoneSentence(45, 10, 'Villeparisis', 'gazole'))
       .toBe('45 station(s) dans un rayon de 10 km autour de Villeparisis · GAZOLE');
+  });
+});
+
+describe('panneau Y aller', () => {
+  const setup = () => {
+    document.body.innerHTML = '<div id="sheet" hidden><div id="sheet-card"></div></div>';
+  };
+  it('titre + 3 liens + Annuler', () => {
+    setup();
+    openSheet(station({ enseigne: 'TotalX', adresse: 'Rue X', ville: 'V' }), null);
+    expect(document.getElementById('sheet').hidden).toBe(false);
+    const card = document.getElementById('sheet-card');
+    expect(card.textContent).toContain('TotalX');
+    expect(card.querySelectorAll('a')).toHaveLength(3);
+    expect(card.textContent).toContain('Annuler');
+  });
+  it('un seul panneau : réouverture remplace', () => {
+    setup();
+    openSheet(station({ enseigne: 'TotalA' }), null);
+    openSheet(station({ enseigne: 'TotalB' }), null);
+    expect(document.querySelectorAll('#sheet-card')).toHaveLength(1);
+    expect(document.getElementById('sheet-card').textContent).toContain('TotalB');
+  });
+  it('fermeture', () => {
+    setup();
+    openSheet(station(), null);
+    closeSheet();
+    expect(document.getElementById('sheet').hidden).toBe(true);
+  });
+  it('sheetLinks : 3 liens target blank', () => {
+    const h = sheetLinks(station());
+    expect((h.match(/<a /g) || []).length).toBe(3);
+    expect(h).toContain('target="_blank"');
   });
 });
