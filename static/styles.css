@@ -76,6 +76,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .sheet h2{margin:0;font-size:18px}
 .sheet a{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink);font-weight:600;background:var(--bg)}
 .sheet .cancel{width:100%;border-radius:8px}
+.sheet .copy{width:100%;border-radius:8px}
+.sheet button:disabled{opacity:.5;cursor:not-allowed}
 @media(prefers-reduced-motion:no-preference){
   .sheet-back{animation:sheet-fade .15s ease-out}
   .sheet{animation:sheet-pop .18s ease-out}

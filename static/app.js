@@ -39,25 +39,57 @@ export const affBadge = a => {
 export const validCoords = (lat, lon) =>
   typeof lat === 'number' && typeof lon === 'number' && Number.isFinite(lat) && Number.isFinite(lon)
   && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+export const isApple = () => {
+  if (typeof navigator === 'undefined') return false;
+  return /iPhone|iPad|Macintosh|Mac OS/i.test(navigator.userAgent || '');
+};
 export const navItems = x => {
-  const names = ['Waze', 'Google Maps', 'Plans'];
+  let apps;
   if (validCoords(x.lat, x.lon)) {
     const ll = `${x.lat},${x.lon}`;
-    return [
-      { name: names[0], href: `https://waze.com/ul?ll=${ll}&navigate=yes` },
-      { name: names[1], href: `https://www.google.com/maps/dir/?api=1&destination=${ll}` },
-      { name: names[2], href: `https://maps.apple.com/?daddr=${ll}&dirflg=d` },
+    apps = [
+      { name: 'Waze', href: `https://waze.com/ul?ll=${ll}&navigate=yes` },
+      { name: 'Google Maps', href: `https://www.google.com/maps/dir/?api=1&destination=${ll}` },
+      { name: 'Plans', href: `https://maps.apple.com/?daddr=${ll}&dirflg=d` },
+    ];
+  } else {
+    const q = [x.adresse, x.ville].filter(Boolean).join(' ').trim();
+    if (!q) return ['Waze', 'Google Maps', 'Plans'].map(name => ({ name, href: null }));
+    const dest = encodeURIComponent(q);
+    apps = [
+      { name: 'Waze', href: `https://waze.com/ul?q=${dest}&navigate=yes` },
+      { name: 'Google Maps', href: `https://www.google.com/maps/dir/?api=1&destination=${dest}` },
+      { name: 'Plans', href: `https://maps.apple.com/?daddr=${dest}&dirflg=d` },
     ];
   }
-  const q = [x.adresse, x.ville].filter(Boolean).join(' ').trim();
-  if (!q) return names.map(name => ({ name, href: null }));
-  const dest = encodeURIComponent(q);
-  return [
-    { name: names[0], href: `https://waze.com/ul?q=${dest}&navigate=yes` },
-    { name: names[1], href: `https://www.google.com/maps/dir/?api=1&destination=${dest}` },
-    { name: names[2], href: `https://maps.apple.com/?daddr=${dest}&dirflg=d` },
-  ];
+  return isApple() ? [apps[2], apps[0], apps[1]] : [apps[0], apps[1], { ...apps[2], name: 'Plans (Apple)' }];
 };
+export async function copyAddr(text) {
+  const done = ok => {
+    const m = document.getElementById('copy-msg');
+    if (!m) return;
+    m.textContent = ok ? 'Adresse copiée' : 'Copie impossible : sélectionne l’adresse manuellement.';
+    m.hidden = false;
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      done(true);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      done(!!ok);
+    }
+  } catch {
+    done(false);
+  }
+}
 export const navLink = ({ name, href }) => href
   ? `<a href="${href}" target="_blank" rel="noopener noreferrer">${name}</a>`
   : `<span class="off" aria-disabled="true">${name}</span>`;
@@ -66,16 +98,26 @@ export const navLinks = x => 'Y aller : ' + navItems(x).map(navLink).join('');
 export function sheetLinks(x) {
   return navItems(x).map(navLink).join('');
 }
+export function copyButton(x) {
+  const addr = [x.adresse, x.ville].filter(Boolean).join(' ').trim();
+  return addr
+    ? `<button type="button" class="copy" data-copy="${esc(addr)}">Copier l’adresse</button>`
+    : `<button type="button" class="copy" disabled aria-disabled="true">Copier l’adresse</button>`;
+}
 let sheetTrigger = null;
 export function openSheet(x, trigger) {
   const card = document.getElementById('sheet-card');
   card.innerHTML = `<h2 id="sheet-title">${esc(x.enseigne || x.nom || x.adresse) || 'Station'}</h2>`
     + `<p class="addr">${esc(x.adresse)} · ${esc(x.ville)}</p>`
     + sheetLinks(x)
+    + copyButton(x)
+    + `<p class="addr" id="copy-msg" hidden></p>`
     + `<button type="button" class="cancel" id="sheet-cancel">Annuler</button>`;
   document.getElementById('sheet').hidden = false;
   sheetTrigger = trigger || null;
   document.getElementById('sheet-cancel').addEventListener('click', closeSheet);
+  const cb = card.querySelector('.copy');
+  if (cb && cb.dataset.copy) cb.addEventListener('click', () => copyAddr(cb.dataset.copy));
   const first = card.querySelector('a,button');
   if (first) first.focus();
 }

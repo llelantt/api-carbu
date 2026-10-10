@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
-  sheetLinks, openSheet, closeSheet, validCoords, navItems,
+  sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -352,5 +352,41 @@ describe('liens navigation', () => {
     const h = sheetLinks(station({ lat: null, lon: null, adresse: null, ville: null }));
     expect(h).not.toContain('<a ');
     expect((h.match(/aria-disabled="true"/g) || []).length).toBe(3);
+  });
+});
+
+describe('ordre selon appareil', () => {
+  const setUA = ua => Object.defineProperty(window.navigator, 'userAgent', { value: ua, configurable: true });
+  const def = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36';
+  it('Apple -> Plans en premier', () => {
+    setUA('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15');
+    expect(isApple()).toBe(true);
+    const names = navItems(station()).map(i => i.name);
+    expect(names[0]).toBe('Plans');
+    setUA(def);
+  });
+  it('autres -> Waze, Google, Plans (Apple) en dernier', () => {
+    setUA(def);
+    expect(isApple()).toBe(false);
+    const names = navItems(station()).map(i => i.name);
+    expect(names).toEqual(['Waze', 'Google Maps', 'Plans (Apple)']);
+  });
+});
+
+describe('copie adresse', () => {
+  it('bouton avec adresse échappée, désactivé sinon', () => {
+    expect(copyButton(station({ adresse: '20 Rue', ville: 'Lille' }))).toContain('data-copy="20 Rue Lille"');
+    const off = copyButton(station({ adresse: null, ville: null }));
+    expect(off).toContain('disabled');
+    expect(off).not.toContain('data-copy');
+  });
+  it('confirme par message, repli si refusé', async () => {
+    document.body.innerHTML = '<p id="copy-msg" hidden></p>';
+    Object.defineProperty(window.navigator, 'clipboard', { value: { writeText: async () => {} }, configurable: true });
+    await copyAddr('20 Rue Gambetta Lille');
+    expect(document.getElementById('copy-msg').textContent).toBe('Adresse copiée');
+    delete window.navigator.clipboard;
+    await copyAddr('x');
+    expect(document.getElementById('copy-msg').textContent).toContain('Copie impossible');
   });
 });
