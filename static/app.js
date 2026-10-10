@@ -285,6 +285,11 @@ if (hasDOM) {
   document.getElementById('adr').addEventListener('input', e => {
     const q = e.target.value.trim();
     clearTimeout(sugT);
+    if (pos) {
+      pos = null;
+      document.getElementById('cp').disabled = false;
+      document.getElementById('geo').style.display = 'none';
+    }
     if (sugCtl) sugCtl.abort();
     if (q.length < 3) { document.getElementById('sugg').innerHTML = ''; return; }
     sugT = setTimeout(async () => {
