@@ -106,6 +106,9 @@ export function copyButton(x) {
 }
 let sheetTrigger = null;
 export function openSheet(x, trigger) {
+  if (!x) return;
+  const hasPlace = x.adresse || x.ville || x.enseigne || x.nom || (x.lat != null && x.lon != null);
+  if (!hasPlace) return;
   const card = document.getElementById('sheet-card');
   card.innerHTML = `<h2 id="sheet-title">${esc(x.enseigne || x.nom || x.adresse) || 'Station'}</h2>`
     + `<p class="addr">${esc(x.adresse)} · ${esc(x.ville)}</p>`

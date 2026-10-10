@@ -316,6 +316,13 @@ describe('panneau Y aller', () => {
     closeSheet();
     expect(document.getElementById('sheet').hidden).toBe(true);
   });
+  it('sans station ou données vides -> ne s’ouvre pas', () => {
+    setup();
+    openSheet(null, null);
+    openSheet({}, null);
+    openSheet({ adresse: null, ville: null, lat: null, lon: null }, null);
+    expect(document.getElementById('sheet').hidden).toBe(true);
+  });
   it('sheetLinks : 3 liens target blank', () => {
     const h = sheetLinks(station());
     expect((h.match(/<a /g) || []).length).toBe(3);
