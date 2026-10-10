@@ -153,6 +153,12 @@ export function initSheet() {
 export function setTestState({ stations, stats, plein = 50 }) {
   lastS = stations; lastT = stats; lastMax = stats.max; lastL = plein;
 }
+export function loadHideClosed() {
+  try { return localStorage.getItem('hideClosed') !== '0'; } catch { return true; }
+}
+export function saveHideClosed(v) {
+  try { localStorage.setItem('hideClosed', v ? '1' : '0'); } catch { /* stockage indisponible */ }
+}
 export const FUEL_ORDER = ['gazole', 'sp95', 'e10', 'sp98', 'e85', 'gplc'];
 export const fuelName = c => ({ gazole: 'Gazole', sp95: 'SP95', e10: 'E10', sp98: 'SP98', e85: 'E85', gplc: 'GPLc' }[c] || c);
 export const fuelsRows = (x, carb = '') => Object.entries(x.carburants || {})
@@ -168,10 +174,10 @@ export function curve(h) {
   const d0 = h[0].date.slice(5, 10).replace('-', '/'), d1 = h[h.length - 1].date.slice(5, 10).replace('-', '/');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Historique des prix"><polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2"/>${h.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.prix).toFixed(1)}" r="3" fill="var(--acc)"/>`).join('')}<text x="${P}" y="${H - 1}" font-size="9" fill="var(--mut)">${d0}</text><text x="${W - P}" y="${H - 1}" font-size="9" text-anchor="end" fill="var(--mut)">${d1}</text><text x="${W - P}" y="12" font-size="9" text-anchor="end" fill="var(--mut)">${pf(mx)} €</text></svg>`;
 }
-export function stationsHTML(arr, { mn, mx, L, carb = '' }) {
+export function stationsHTML(arr, { mn, mx, L, carb = '', badgeMin = mn }) {
   return arr.map((x, i) => `
 <div class="st" data-i="${i}" tabindex="0" role="button"><div class="top"><span class="rk">${i + 1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
-${x.prix === mn ? '<span class="badge">Meilleur prix</span>' : ''}</div>
+${badgeMin != null && x.prix === badgeMin ? '<span class="badge">Meilleur prix</span>' : ''}</div>
 <div><b>${esc(x.enseigne || x.nom || x.adresse) || 'Adresse inconnue'}</b></div>
 <div class="addr">${(x.enseigne || x.nom) && x.adresse ? esc(x.adresse) + ' · ' : ''}${esc(x.ville)}${x.distance_km != null ? ` · à ${String(x.distance_km).replace('.', ',')} km` : ''} · ${x.date ? new Date(x.date).toLocaleDateString('fr-FR') : ''}${x.jours != null ? ` · il y a ${x.jours} j` : ''}</div>
 <div class="fiab">${x.perime ? `<span class="badge old">Prix vieux de ${x.jours} j</span>` : ''}${x.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(x.rupture))}</span>` : ''}${x.affluence ? affBadge(x.affluence) : ''}</div>
@@ -215,7 +221,7 @@ const hasDOM = typeof document !== 'undefined' && typeof document.getElementById
 let f = null, msg = null, box = null, cards = null;
 let fa = null, msga = null, alBox = null;
 let pos = null, lastStations = [];
-let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50, lastCarb = '';
+let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50, lastCarb = '', lastShown = [];
 let lastCenter = null, lastDist = 0;
 let sel = null, ctl = null, req = 0;
 const jd = async r => { try { return await r.json() } catch { return {} } };
@@ -240,21 +246,30 @@ function sortedStations() {
 }
 export function renderList() {
   const arr = sortedStations(), mn = lastT.min;
+  const elig = arr.filter(x => openState(x.affluence) !== 'closed');
+  const badgeMin = elig.length ? Math.min(...elig.map(x => x.prix)) : null;
+  const shown = hideClosed() ? (elig.length ? elig : arr) : arr;
+  lastShown = shown;
+  document.getElementById('closedmsg').hidden = !(arr.length && arr.every(x => openState(x.affluence) === 'closed'));
   const bx = box || document.getElementById('stations');
-  bx.innerHTML = stationsHTML(arr, { mn, mx: lastMax, L: lastL, carb: lastCarb });
+  bx.innerHTML = stationsHTML(shown, { mn, mx: lastMax, L: lastL, carb: lastCarb, badgeMin });
   bx.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
     if (e.target.closest('a,button')) return;
-    const x = sortedStations()[+el.dataset.i];
+    const x = lastShown[+el.dataset.i];
     if (x) openSheet(x, el);
   }));
   bx.querySelectorAll('.st').forEach(el => el.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      const x = sortedStations()[+el.dataset.i];
+      const x = lastShown[+el.dataset.i];
       if (x) openSheet(x, el);
     }
   }));
-  drawPlan(arr);
+  drawPlan(shown);
+}
+export function hideClosed() {
+  const el = typeof document !== 'undefined' && document.getElementById('hideClosed');
+  return !el || el.checked;
 }
 export const PLAN_ZOOM_SINGLE = 15, PLAN_ZOOM_EMPTY = 14;
 export function leafletPlan(arr, { sel, pos }) {
@@ -302,7 +317,7 @@ function selectStation(i) {
     card.scrollIntoView({ block: 'nearest', behavior: smooth ? 'smooth' : 'auto' });
     card.querySelector('.detail').hidden = false; card.setAttribute('aria-expanded', 'true');
   }
-  if (lastS) drawPlan(sortedStations());
+  if (lastS) drawPlan(lastShown);
 }
 let lmap = null, llayer = null;
 function drawLeaflet(arr) {
@@ -321,7 +336,7 @@ function drawLeaflet(arr) {
       if (++tileErrs >= 4 && tilesOK) {
         tilesOK = false;
         showMapWarn();
-        if (lastS) drawPlan(sortedStations());
+        if (lastS) drawPlan(lastShown);
       }
     });
     tl.addTo(lmap);
@@ -437,6 +452,13 @@ if (hasDOM) {
   });
   document.getElementById('dt').addEventListener('change', e => {
     document.getElementById('dopts').style.display = e.target.checked ? 'flex' : 'none';
+  });
+  try {
+    document.getElementById('hideClosed').checked = loadHideClosed();
+  } catch { /* stockage indisponible */ }
+  document.getElementById('hideClosed').addEventListener('change', e => {
+    saveHideClosed(e.target.checked);
+    if (lastS) renderList();
   });
   initSheet();
   document.querySelectorAll('#sortTabs button').forEach(b => b.addEventListener('click', () => {

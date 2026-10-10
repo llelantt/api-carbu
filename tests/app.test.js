@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
   sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple,
-  renderList, setTestState, initSheet,
+  renderList, setTestState, initSheet, loadHideClosed, saveHideClosed,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -434,6 +434,7 @@ describe('interactions carte/panneau', () => {
   const ui = (stations) => {
     document.body.innerHTML = `
       <div id="stations"></div><div id="map" hidden></div><p id="mapwarn" hidden></p>
+      <input type="checkbox" id="hideClosed" checked><p id="closedmsg" class="sub" hidden></p>
       <div id="sheet" hidden><div id="sheet-card"></div></div>`;
     initSheet();
     setTestState({
@@ -512,5 +513,44 @@ describe('page servie', () => {
     const sheet = document.getElementById('sheet');
     expect(sheet.hidden).toBe(true);
     expect(getComputedStyle(sheet).display).toBe('none');
+  });
+});
+
+describe('stations fermées', () => {
+  const ui = (stations) => {
+    document.body.innerHTML = `
+      <div id="stations"></div><div id="map" hidden></div><p id="mapwarn" hidden></p>
+      <input type="checkbox" id="hideClosed" checked><p id="closedmsg" class="sub" hidden></p>
+      <div id="sheet" hidden><div id="sheet-card"></div></div>`;
+    setTestState({ stations, stats: { min: 1.5, max: 2 }, plein: 50 });
+    renderList();
+  };
+  const closed = prix => station({ prix, affluence: { niveau: 'fermé', ouvert: false } });
+  const open = prix => station({ prix, affluence: { niveau: 'fluide', ouvert: true } });
+  it('badge au moins cher non fermé, jamais aux fermées', () => {
+    ui([closed(1.5), open(1.8)]);
+    document.getElementById('hideClosed').checked = false;
+    renderList();
+    const parts = document.querySelectorAll('#stations .st');
+    expect(parts.length).toBe(2);
+    expect(parts[0].innerHTML).not.toContain('Meilleur prix');
+    expect(parts[1].innerHTML).toContain('Meilleur prix');
+  });
+  it('masque les fermées quand coché', () => {
+    ui([closed(1.5), open(1.8)]);
+    expect(document.querySelectorAll('#stations .st')).toHaveLength(1);
+    expect(document.getElementById('closedmsg').hidden).toBe(true);
+  });
+  it('toutes fermées -> affichées avec message, sans badge', () => {
+    ui([closed(1.5), closed(1.8)]);
+    expect(document.querySelectorAll('#stations .st')).toHaveLength(2);
+    expect(document.getElementById('closedmsg').hidden).toBe(false);
+    expect(document.getElementById('stations').innerHTML).not.toContain('Meilleur prix');
+  });
+  it('persistance localStorage', () => {
+    saveHideClosed(false);
+    expect(loadHideClosed()).toBe(false);
+    saveHideClosed(true);
+    expect(loadHideClosed()).toBe(true);
   });
 });
