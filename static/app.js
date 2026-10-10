@@ -267,6 +267,7 @@ if (hasDOM) {
       kp = document.getElementById('kp').value, kl = document.getElementById('kl').value,
       co = document.getElementById('co').value || '6.5', vo = document.getElementById('vo').value || '50';
     if (!pos && !document.getElementById('cp').value.trim()) { msg.textContent = 'Indique un code postal ou localise-toi.'; msg.className = 'err'; return; }
+    if (pos) { const dd = +document.getElementById('dist').value; if (!(dd > 0 && dd <= 100)) { msg.textContent = 'Rayon invalide : entre 1 et 100 km.'; msg.className = 'err'; return; } }
     if (ctl) ctl.abort();
     ctl = new AbortController(); const my = ++req, sig = ctl.signal;
     const btn = f.querySelector('button[type="submit"]'); btn.disabled = true;
