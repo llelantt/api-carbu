@@ -69,6 +69,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .itin{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center;font-size:.85rem;font-weight:600}
 .itin a{flex:1;min-width:90px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;padding:8px;border-radius:999px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
 .st{cursor:pointer}
+.st:hover{border-color:var(--acc)}
+.go{text-align:right;font-size:.8rem;color:var(--mut);margin-top:6px}
 .eco{color:var(--eco);font-weight:600;font-size:.9rem;margin-top:2px}
 #msg{text-align:center;color:var(--mut);margin:16px 0;font-size:13px}
 .ferr{color:#b91c1c;font-size:12px}

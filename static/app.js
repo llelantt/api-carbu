@@ -58,7 +58,7 @@ export function curve(h) {
 }
 export function stationsHTML(arr, { mn, mx, L, carb = '' }) {
   return arr.map((x, i) => `
-<div class="st" data-i="${i}" tabindex="0" role="button" aria-expanded="false"><div class="top"><span class="rk">${i + 1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
+<div class="st" data-i="${i}" tabindex="0" role="button"><div class="top"><span class="rk">${i + 1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
 ${x.prix === mn ? '<span class="badge">Meilleur prix</span>' : ''}</div>
 <div><b>${esc(x.enseigne || x.nom || x.adresse) || 'Adresse inconnue'}</b></div>
 <div class="addr">${(x.enseigne || x.nom) && x.adresse ? esc(x.adresse) + ' · ' : ''}${esc(x.ville)}${x.distance_km != null ? ` · à ${String(x.distance_km).replace('.', ',')} km` : ''} · ${x.date ? new Date(x.date).toLocaleDateString('fr-FR') : ''}${x.jours != null ? ` · il y a ${x.jours} j` : ''}</div>
@@ -69,8 +69,8 @@ ${x.prix === mn ? '<span class="badge">Meilleur prix</span>' : ''}</div>
 <div class="fuels">${fuelsRows(x, carb)}</div>
 ${(x.services || []).length ? `<div class="fiab">${x.services.map(s => `<span class="badge">${esc(s)}</span>`).join('')}</div>` : ''}
 <div class="curve">${curve(x.histo)}</div>
-<div class="itin">${navLinks(x)}</div>
 </div>
+<div class="go">Y aller ›</div>
 </div>`).join('');
 }
 export function suggestHTML(fs) {
@@ -130,14 +130,15 @@ function renderList() {
   const arr = sortedStations(), mn = lastT.min;
   box.innerHTML = stationsHTML(arr, { mn, mx: lastMax, L: lastL, carb: lastCarb });
   box.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
-    if (e.target.closest('a')) return;
-    const d = el.querySelector('.detail'); d.hidden = !d.hidden; el.setAttribute('aria-expanded', !d.hidden);
-    focusMarker(+el.dataset.i);
+    if (e.target.closest('a,button')) return;
+    const x = sortedStations()[+el.dataset.i];
+    if (x) console.log('Y aller :', x.enseigne || x.nom || x.adresse, x.ville, x.prix);
   }));
   box.querySelectorAll('.st').forEach(el => el.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault(); const d = el.querySelector('.detail'); d.hidden = !d.hidden; el.setAttribute('aria-expanded', !d.hidden);
-      focusMarker(+el.dataset.i);
+      e.preventDefault();
+      const x = sortedStations()[+el.dataset.i];
+      if (x) console.log('Y aller :', x.enseigne || x.nom || x.adresse, x.ville, x.prix);
     }
   }));
   drawPlan(arr);
@@ -190,18 +191,7 @@ function selectStation(i) {
   }
   if (lastS) drawPlan(sortedStations());
 }
-let lmap = null, llayer = null, lmarkers = [];
-function focusMarker(i) {
-  if (!lmap || typeof window === 'undefined' || !window.L) return;
-  const f = lmarkers.find(o => o.i === i);
-  if (!f) return;
-  const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  lmap.setView(f.m.getLatLng(), Math.max(lmap.getZoom(), 14), { animate: smooth });
-  lmarkers.forEach(o => {
-    const e = o.m.getElement() && o.m.getElement().querySelector('.mk');
-    if (e) e.classList.toggle('sel', o.i === i);
-  });
-}
+let lmap = null, llayer = null;
 function drawLeaflet(arr) {
   const el = document.getElementById('map');
   const plan = leafletPlan(arr, { sel, pos });
@@ -225,11 +215,10 @@ function drawLeaflet(arr) {
   }
   if (llayer) llayer.clearLayers(); else llayer = window.L.layerGroup().addTo(lmap);
   if (lastCenter) window.L.circle([lastCenter.lat, lastCenter.lon], { radius: lastDist * 1000, color: '#2563eb', weight: 1, fillColor: '#2563eb', fillOpacity: 0.08, interactive: false }).addTo(llayer);
-  lmarkers = plan.markers.map(d => {
+  plan.markers.forEach(d => {
     const m = window.L.marker([d.lat, d.lon], { icon: window.L.divIcon({ className: '', html: d.html, iconSize: null }) }).addTo(llayer);
     m.bindPopup(d.popup);
     m.on('click', () => selectStation(d.i));
-    return { i: d.i, m };
   });
   if (plan.user) {
     window.L.circleMarker([plan.user.lat, plan.user.lon], { radius: 8, color: '#2563eb', fillColor: '#2563eb', fillOpacity: 1 }).addTo(llayer).bindPopup('Toi');
