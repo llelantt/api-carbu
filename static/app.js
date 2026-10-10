@@ -159,6 +159,20 @@ export function loadHideClosed() {
 export function saveHideClosed(v) {
   try { localStorage.setItem('hideClosed', v ? '1' : '0'); } catch { /* stockage indisponible */ }
 }
+export function loadFavs() {
+  try { return JSON.parse(localStorage.getItem('favoris') || '[]'); } catch { return []; }
+}
+export function saveFavs(l) {
+  try { localStorage.setItem('favoris', JSON.stringify(l)); } catch { /* stockage indisponible */ }
+}
+export function toggleFav(list, fav) {
+  const i = list.findIndex(f => f.id === fav.id);
+  if (i >= 0) { list.splice(i, 1); return false; }
+  list.push(fav); return true;
+}
+export function isFav(list, id) {
+  return list.some(f => f.id === id);
+}
 export const FUEL_ORDER = ['gazole', 'sp95', 'e10', 'sp98', 'e85', 'gplc'];
 export const fuelName = c => ({ gazole: 'Gazole', sp95: 'SP95', e10: 'E10', sp98: 'SP98', e85: 'E85', gplc: 'GPLc' }[c] || c);
 export const fuelsRows = (x, carb = '') => Object.entries(x.carburants || {})
@@ -174,12 +188,12 @@ export function curve(h) {
   const d0 = h[0].date.slice(5, 10).replace('-', '/'), d1 = h[h.length - 1].date.slice(5, 10).replace('-', '/');
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Historique des prix"><polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2"/>${h.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.prix).toFixed(1)}" r="3" fill="var(--acc)"/>`).join('')}<text x="${P}" y="${H - 1}" font-size="9" fill="var(--mut)">${d0}</text><text x="${W - P}" y="${H - 1}" font-size="9" text-anchor="end" fill="var(--mut)">${d1}</text><text x="${W - P}" y="12" font-size="9" text-anchor="end" fill="var(--mut)">${pf(mx)} €</text></svg>`;
 }
-export function stationsHTML(arr, { mn, mx, L, carb = '', badgeMin = mn }) {
+export function stationsHTML(arr, { mn, mx, L, carb = '', badgeMin = mn, favs = [] }) {
   return arr.map((x, i) => `
 <div class="st" data-i="${i}" tabindex="0" role="button"><div class="top"><span class="rk">${i + 1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
-${badgeMin != null && x.prix === badgeMin ? '<span class="badge">Meilleur prix</span>' : ''}</div>
+${badgeMin != null && x.prix === badgeMin ? '<span class="badge">Meilleur prix</span>' : ''}<button type="button" class="fav" data-fav="${i}" aria-pressed="${favs.includes(x.id)}" aria-label="Ajouter aux favoris">${favs.includes(x.id) ? '★' : '☆'}</button></div>
 <div><b>${esc(x.enseigne || x.nom || x.adresse) || 'Adresse inconnue'}</b></div>
-<div class="addr">${(x.enseigne || x.nom) && x.adresse ? esc(x.adresse) + ' · ' : ''}${esc(x.ville)}${x.distance_km != null ? ` · à ${String(x.distance_km).replace('.', ',')} km` : ''} · ${x.date ? new Date(x.date).toLocaleDateString('fr-FR') : ''}${x.jours != null ? ` · il y a ${x.jours} j` : ''}</div>
+<div class="addr">${(x.enseigne || x.nom) && x.adresse ? esc(x.adresse) + ' · ' : ''}${esc(x.ville)}${x.distance_km != null ? ` · à ${String(x.distance_km).replace('.', ',')} km${x.parRoute ? ' par la route' : ''}` : ''} · ${x.date ? new Date(x.date).toLocaleDateString('fr-FR') : ''}${x.jours != null ? ` · il y a ${x.jours} j` : ''}</div>
 <div class="fiab">${x.perime ? `<span class="badge old">Prix vieux de ${x.jours} j</span>` : ''}${x.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(x.rupture))}</span>` : ''}${x.affluence ? affBadge(x.affluence) : ''}</div>
 <div class="tot">Plein ${L} L : ${pf2(x.total_cost)} €${x.distance_km != null ? ' détour inclus' : ''}</div>
 <div class="eco">${x.prix === mn ? trendHTML(lastTrend) : `Économie : ${pf2((mx - x.prix) * L)} € sur un plein de ${L} L`}</div>
@@ -248,6 +262,20 @@ export function errorText(status, body) {
   return { kind: 'error', text: body.detail || 'Erreur.' };
 }
 
+export function osrmTableURL(from, dests) {
+  const all = [from, ...dests].map(p => `${p.lon},${p.lat}`).join(';');
+  return `https://router.project-osrm.org/table/v1/driving/${all}?annotations=distance&sources=0`;
+}
+export function applyRoadKm(stations, roadKm, plein, conso) {
+  stations.forEach((x, i) => {
+    const r = roadKm[i];
+    if (r == null || !(r >= 0)) return;
+    x.distance_km = Math.round(r * 10) / 10;
+    x.total_cost = Math.round((plein * x.prix + 2 * x.distance_km * conso / 100 * x.prix) * 100) / 100;
+    x.parRoute = true;
+  });
+}
+
 // ---------- état navigateur ----------
 const hasDOM = typeof document !== 'undefined' && typeof document.getElementById === 'function' && !!document.getElementById('f');
 let f = null, msg = null, box = null, cards = null;
@@ -284,7 +312,7 @@ export function renderList() {
   lastShown = shown;
   document.getElementById('closedmsg').hidden = !(arr.length && arr.every(x => openState(x.affluence) === 'closed'));
   const bx = box || document.getElementById('stations');
-  bx.innerHTML = stationsHTML(shown, { mn, mx: lastMax, L: lastL, carb: lastCarb, badgeMin });
+  bx.innerHTML = stationsHTML(shown, { mn, mx: lastMax, L: lastL, carb: lastCarb, badgeMin, favs: loadFavs().map(f => f.id) });
   bx.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
     if (e.target.closest('a,button')) return;
     const x = lastShown[+el.dataset.i];
@@ -292,12 +320,44 @@ export function renderList() {
   }));
   bx.querySelectorAll('.st').forEach(el => el.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
+      if (e.target.closest('button')) return;
       e.preventDefault();
       const x = lastShown[+el.dataset.i];
       if (x) openSheet(x, el);
     }
   }));
+  bx.querySelectorAll('.fav').forEach(b => b.addEventListener('click', () => {
+    const x = lastShown[+b.dataset.fav];
+    if (!x) return;
+    const l = loadFavs();
+    toggleFav(l, { id: x.id, cp: x.cp, label: x.enseigne || x.nom || x.adresse });
+    saveFavs(l);
+    const on = isFav(l, x.id);
+    b.textContent = on ? '★' : '☆';
+    b.setAttribute('aria-pressed', on);
+    renderFavs();
+  }));
   drawPlan(shown);
+}
+export function renderFavs() {
+  const bx = (typeof document !== 'undefined' && document.getElementById('favs')) || null;
+  if (!bx) return;
+  const l = loadFavs();
+  bx.innerHTML = l.length ? l.map((f, i) => `<div class="st" data-cpgo="${esc(f.cp || '')}"><div class="top"><b>${esc(f.label) || 'Station'} · ${esc(f.cp || '')}</b><button type="button" class="icon-btn" data-unfav="${i}">✕</button></div></div>`).join('') : '<span class="addr">Aucun favori.</span>';
+  bx.querySelectorAll('[data-unfav]').forEach(b => b.addEventListener('click', () => {
+    const ll = loadFavs(); ll.splice(+b.dataset.unfav, 1); saveFavs(ll); renderFavs();
+    if (lastS) renderList();
+  }));
+  bx.querySelectorAll('[data-cpgo]').forEach(el => el.addEventListener('click', e => {
+    if (e.target.closest('button')) return;
+    if (typeof document === 'undefined' || !f) return;
+    document.getElementById('cp').value = el.dataset.cpgo || '';
+    pos = null;
+    document.getElementById('geo').style.display = 'none';
+    document.getElementById('adr').value = '';
+    document.getElementById('sugg').innerHTML = '';
+    f.requestSubmit();
+  }));
 }
 export function hideClosed() {
   const el = typeof document !== 'undefined' && document.getElementById('hideClosed');
@@ -590,9 +650,32 @@ if (hasDOM) {
           wireDetourClick(el, lo);
         } catch { /* détour optionnel */ }
       }
+      async function updateRoad() {
+        if (!pos) return;
+        const idx = [], coords = [];
+        lastS.forEach((x, i) => {
+          if (x.lat != null && x.lon != null && x.distance_km != null) { idx.push(i); coords.push({ lat: x.lat, lon: x.lon }); }
+        });
+        if (!coords.length) return;
+        try {
+          const legs = [];
+          for (let k = 0; k < coords.length; k += 60) {
+            const r = await fetch(osrmTableURL(pos, coords.slice(k, k + 60)), { signal: sig });
+            const d = await jd(r);
+            if (!r.ok || !d.distances) throw new Error('osrm');
+            legs.push(...d.distances[0].slice(1).map(m => (m == null ? null : Math.round(m / 100) / 10)));
+          }
+          if (my !== req) return;
+          const road = new Array(lastS.length).fill(null);
+          idx.forEach((si, k) => { road[si] = legs[k]; });
+          applyRoadKm(lastS, road, lastL, +co || 6.5);
+          renderList();
+        } catch { /* on garde les distances à vol d'oiseau */ }
+      }
       lastS = s.stations; lastT = t; lastMax = t.max; lastL = +vo || 50; lastCarb = carb;
       if (s.position) { lastCenter = { lat: s.position.lat, lon: s.position.lon }; lastDist = s.position.dist; }
       renderList();
+      if (pos) updateRoad();
       if (useD) await showDetour();
       if (my === req) btn.disabled = false;
     } catch (err) {
@@ -625,5 +708,6 @@ if (hasDOM) {
   });
 
   renderA();
+  renderFavs();
   if (document.getElementById('cp').value.trim()) f.requestSubmit();
 }

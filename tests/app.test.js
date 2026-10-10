@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
   sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple, trendHTML, autoDetourParams,
-  detourBannerHTML, sameStationHTML, wireDetourClick,
+  detourBannerHTML, sameStationHTML, wireDetourClick, osrmTableURL, applyRoadKm,
+  toggleFav, isFav, loadFavs, saveFavs, renderFavs,
   renderList, setTestState, initSheet, loadHideClosed, saveHideClosed,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
@@ -615,5 +616,50 @@ describe('bannière détour cliquable', () => {
     el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(document.getElementById('sheet').hidden).toBe(false);
     expect(document.getElementById('sheet-title').textContent).toContain('Rue B');
+  });
+});
+
+describe('distances route', () => {
+  it('URL table OSRM', () => {
+    expect(osrmTableURL({ lat: 48.9, lon: 2.6 }, [{ lat: 48.95, lon: 2.65 }]))
+      .toBe('https://router.project-osrm.org/table/v1/driving/2.6,48.9;2.65,48.95?annotations=distance&sources=0');
+  });
+  it('applique les km route, ignore les null', () => {
+    const a = station({ prix: 2, distance_km: 5, total_cost: 100 });
+    const b = station({ prix: 2, distance_km: 5, total_cost: 100 });
+    applyRoadKm([a, b], [4, null], 50, 6.5);
+    expect(a.distance_km).toBe(4);
+    expect(a.parRoute).toBe(true);
+    expect(a.total_cost).toBeCloseTo(101.04, 2);
+    expect(b.distance_km).toBe(5);
+    expect(b.parRoute).toBeUndefined();
+  });
+});
+
+describe('favoris', () => {
+  it('toggle ajoute/retire, isFav', () => {
+    const l = [];
+    expect(toggleFav(l, { id: '1' })).toBe(true);
+    expect(isFav(l, '1')).toBe(true);
+    expect(toggleFav(l, { id: '1' })).toBe(false);
+    expect(l).toHaveLength(0);
+  });
+  it('persistance', () => {
+    saveFavs([]);
+    saveFavs([{ id: '1' }]);
+    expect(loadFavs()).toEqual([{ id: '1' }]);
+    saveFavs([]);
+  });
+  it('étoile selon état', () => {
+    expect(stationsHTML([station({ id: '9' })], { mn: 1, mx: 2, L: 50, favs: ['9'] })).toContain('★');
+    expect(stationsHTML([station({ id: '9' })], { mn: 1, mx: 2, L: 50 })).toContain('☆');
+  });
+  it('section favoris', () => {
+    document.body.innerHTML = '<div id="favs"></div>';
+    saveFavs([]);
+    saveFavs([{ id: '1', cp: '75001', label: 'Total' }]);
+    renderFavs();
+    expect(document.getElementById('favs').textContent).toContain('Total');
+    saveFavs([]);
   });
 });

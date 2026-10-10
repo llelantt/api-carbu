@@ -12,7 +12,7 @@ app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), na
 
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; "
        "img-src 'self' https://tile.openstreetmap.org; "
-       "connect-src 'self' https://api-adresse.data.gouv.fr")
+       "connect-src 'self' https://api-adresse.data.gouv.fr https://router.project-osrm.org")
 
 
 @app.middleware("http")
