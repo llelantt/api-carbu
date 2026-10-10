@@ -27,15 +27,17 @@ h1{margin:0 0 4px;font:700 28px/1.1 "Barlow Semi Condensed",Barlow,system-ui,san
 h2{font:700 20px "Barlow Semi Condensed",Barlow,system-ui,sans-serif;margin:28px 0 4px}
 .sub{color:var(--mut);margin:0 0 20px;font-size:.9rem}
 form,.card,.st{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
-form{display:flex;gap:8px;flex-wrap:wrap}
+form{display:flex;gap:8px;flex-wrap:wrap;align-items:end}
 form>label{flex:1;min-width:140px;display:grid;gap:3px;font-weight:600;font-size:13px;color:var(--mut)}
 .row{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .row label,#geo label{display:grid;gap:3px;font-weight:600;font-size:13px;color:var(--mut)}
-input,select{flex:1;min-width:140px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;font-size:1rem;color:var(--ink)}
+input,select{flex:1;min-width:140px;background:var(--bg);border:1px solid var(--line);border-radius:8px;height:36px;padding:7px 10px;font-size:15px;color:var(--ink)}
 button{font:inherit;cursor:pointer}
-button[type="submit"]{background:var(--acc);color:var(--onacc);border:0;border-radius:8px;padding:8px 12px;font-size:15px;font-weight:600}
+button[type="submit"]{background:var(--acc);color:var(--onacc);border:0;border-radius:8px;height:36px;padding:0 14px;font-size:14px;font-weight:600}
 button[type="submit"]:hover{filter:brightness(.95)}
-button[type="button"]{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600}
+button[type="button"]{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;height:36px;padding:0 14px;font-size:14px;font-weight:600}
+.tabs button{border-radius:999px;padding:5px 12px;font-size:13px;height:auto}
+#loc{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;height:36px;padding:0 14px;font-size:14px;font-weight:600}
 button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.st[role="button"]:focus-visible,circle:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
 .card{text-align:center}
@@ -72,8 +74,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 #geo{width:100%;display:none;gap:8px;align-items:center;flex-wrap:wrap}
 #geo select{flex:none;min-width:0}
 #unclear{color:var(--mut)}
-.checkline{width:100%;display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--mut)}
-.checkline input{flex:none;width:auto;min-width:0}
+.checkline{width:100%;display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--mut);font-size:14px}
+.checkline input{flex:none;width:16px;height:16px;min-width:0}
 #dopts{width:100%;gap:8px;flex-wrap:wrap;display:none}
 #alertes{display:grid;gap:8px}
 .bd-green{border:2px solid var(--accent);margin-bottom:10px}
@@ -97,11 +99,11 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 @media(max-width:560px){
   .cards{grid-template-columns:1fr 1fr 1fr}
   .card .val{font-size:1.1rem}
-  form{flex-direction:column}
+  form{flex-direction:column;align-items:stretch}
   #map{height:260px}
 }
-@media(prefers-reduced-motion:no-preference){.st{transition:box-shadow .15s}}
 @media (pointer:coarse){
-  button,.itin a,input,select{min-height:40px}
+  button,.itin a{min-height:40px}
   button{min-width:40px}
 }
+@media(prefers-reduced-motion:no-preference){.st{transition:box-shadow .15s}}
