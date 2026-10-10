@@ -419,27 +419,37 @@ function selectStation(i) {
   if (lastS) drawPlan(lastShown);
 }
 let lmap = null, llayer = null;
+function ensureLeafletMap() {
+  if (lmap || typeof window === 'undefined' || !window.L) return !!lmap;
+  const coarse = window.matchMedia('(pointer: coarse)').matches;
+  lmap = window.L.map('map', { dragging: !coarse, tap: !coarse, touchZoom: true, scrollWheelZoom: false });
+  const tl = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  });
+  tl.on('tileerror', () => {
+    if (++tileErrs >= 4 && tilesOK) {
+      tilesOK = false;
+      showMapWarn();
+      if (lastS) drawPlan(lastShown);
+    }
+  });
+  tl.addTo(lmap);
+  return true;
+}
+export function initDefaultMap() {
+  if (!ensureLeafletMap()) return false;
+  document.getElementById('map').hidden = false;
+  lmap.setView([46.6, 2.4], 6);
+  setTimeout(() => lmap.invalidateSize(), 100);
+  return true;
+}
 function drawLeaflet(arr) {
   const el = document.getElementById('map');
   const plan = leafletPlan(arr, { sel, pos });
   if (!plan) { el.hidden = true; return; }
   el.hidden = false;
-  if (!lmap) {
-    const coarse = window.matchMedia('(pointer: coarse)').matches;
-    lmap = window.L.map('map', { dragging: !coarse, tap: !coarse, touchZoom: true, scrollWheelZoom: false });
-    const tl = window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    });
-    tl.on('tileerror', () => {
-      if (++tileErrs >= 4 && tilesOK) {
-        tilesOK = false;
-        showMapWarn();
-        if (lastS) drawPlan(lastShown);
-      }
-    });
-    tl.addTo(lmap);
-  }
+  ensureLeafletMap();
   if (llayer) llayer.clearLayers(); else llayer = window.L.layerGroup().addTo(lmap);
   if (lastCenter) window.L.circle([lastCenter.lat, lastCenter.lon], { radius: lastDist * 1000, color: '#2563eb', weight: 1, fillColor: '#2563eb', fillOpacity: 0.08, interactive: false }).addTo(llayer);
   plan.markers.forEach(d => {
@@ -716,5 +726,6 @@ if (hasDOM) {
 
   renderA();
   renderFavs();
+  initDefaultMap();
   if (document.getElementById('cp').value.trim()) f.requestSubmit();
 }

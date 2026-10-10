@@ -4,7 +4,7 @@ import {
   sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple, trendHTML, autoDetourParams,
   detourBannerHTML, sameStationHTML, wireDetourClick, osrmTableURL, applyRoadKm, favToStation,
   toggleFav, isFav, loadFavs, saveFavs, renderFavs,
-  renderList, setTestState, initSheet, loadHideClosed, saveHideClosed,
+  renderList, setTestState, initSheet, loadHideClosed, saveHideClosed, initDefaultMap,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -673,5 +673,32 @@ describe('favoris', () => {
     const hrefs = [...document.querySelectorAll('#sheet-card a')].map(a => a.getAttribute('href'));
     expect(hrefs[0]).toContain('ll=48.9,2.6');
     saveFavs([]);
+  });
+});
+
+describe('carte par défaut', () => {
+  it('sans Leaflet -> false, carte cachée', () => {
+    document.body.innerHTML = '<div id="map" hidden></div>';
+    expect(initDefaultMap()).toBe(false);
+    expect(document.getElementById('map').hidden).toBe(true);
+  });
+  it('avec Leaflet -> carte de France affichée', () => {
+    const calls = {};
+    window.matchMedia = () => ({ matches: false });
+    window.L = {
+      map: (id, opts) => {
+        calls.mapOpts = opts;
+        return { setView(c, z) { calls.view = [c, z]; }, invalidateSize() {}, fitBounds() {}, getZoom: () => 6 };
+      },
+      tileLayer: () => ({ on() {}, addTo() {} }),
+      layerGroup: () => ({ addTo() {}, clearLayers() {} }),
+    };
+    document.body.innerHTML = '<div id="map" hidden></div>';
+    expect(initDefaultMap()).toBe(true);
+    expect(document.getElementById('map').hidden).toBe(false);
+    expect(calls.view).toEqual([[46.6, 2.4], 6]);
+    expect(calls.mapOpts.scrollWheelZoom).toBe(false);
+    delete window.L;
+    delete window.matchMedia;
   });
 });
