@@ -338,5 +338,5 @@ if (hasDOM) {
   });
 
   renderA();
-  f.requestSubmit();
+  if (document.getElementById('cp').value.trim()) f.requestSubmit();
 }
