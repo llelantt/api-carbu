@@ -7,7 +7,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-app = FastAPI(title="API Carburants")
+app = FastAPI(title="Carbu")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 CSP = ("default-src 'self'; script-src 'self'; style-src 'self'; "
@@ -340,7 +340,7 @@ def index():
 @app.get("/api")
 def api_root():
     return {
-        "nom": "API Carburants — prix les moins chers par code postal",
+        "nom": "Carbu — prix les moins chers par code postal",
         "routes": {
             "GET /": "interface web",
             "GET /api": "cette aide",

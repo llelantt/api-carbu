@@ -1,4 +1,4 @@
-# API Carburants
+# Carbu
 
 Trouve l'essence la moins chère près de chez toi (données officielles de l'État).
 
