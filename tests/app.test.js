@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence,
+  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -78,6 +78,24 @@ describe('fuelsRows', () => {
   it('surligne le carburant cherché', () => {
     expect(fuelsRows(x, 'e85')).toContain('fuel cur');
     expect(fuelsRows(x, '')).not.toContain('cur');
+  });
+});
+
+describe('affBadge', () => {
+  it('état toujours en premier, séparé de l’affluence', () => {
+    const h = affBadge({ niveau: 'modérée', ouvert: true });
+    expect((h.match(/<span class="badge/g) || []).length).toBe(2);
+    expect(h.indexOf('>Ouvert<')).toBeLessThan(h.indexOf('Affluence'));
+  });
+  it('fermé -> un seul badge', () => {
+    const h = affBadge({ niveau: 'fermé', ouvert: false });
+    expect(h).toContain('>Fermé<');
+    expect(h).not.toContain('Affluence');
+  });
+  it('inconnu -> Horaires inconnus + niveau', () => {
+    const h = affBadge({ niveau: 'dense', ouvert: null });
+    expect(h).toContain('Horaires inconnus');
+    expect(h).toContain('Affluence dense');
   });
 });
 
