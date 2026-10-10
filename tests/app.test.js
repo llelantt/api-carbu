@@ -8,6 +8,7 @@ const station = (over = {}) => ({
   id: '1', adresse: 'Place Test', ville: 'Ville', cp: '77270',
   prix: 1.789, date: '2026-10-01T00:00:00+00:00', lat: 48.95, lon: 2.6,
   jours: 1, perime: false, rupture: null, distance_km: 2.5,
+  enseigne: null, nom: null,
   affluence: { niveau: 'modérée', ouvert: true },
   total_cost: 90.5, economy_vs_nearest: 0,
   services: [], carburants: { e10: { prix: 1.789, date: null, jours: 1, perime: false, rupture: null } },
@@ -146,6 +147,15 @@ describe('badges état au rendu', () => {
     for (const c of parts) {
       expect(c).toMatch(/Ouvert 24h\/24|>Ouvert<|>Fermé<|Horaires inconnus/);
     }
+  });
+  it('enseigne en titre, adresse en dessous', () => {
+    const html = cards([station({ enseigne: 'Total', nom: 'Station Total' })]);
+    expect(html).toContain('<b>Total</b>');
+    expect(html).toContain('Place Test');
+  });
+  it('sans enseigne, adresse en titre', () => {
+    const html = cards([station()]);
+    expect(html).toContain('<b>Place Test</b>');
   });
 });
 

@@ -108,6 +108,27 @@ class Integration(unittest.TestCase):
         self.assertTrue(aff["2"]["ouvert"])
         self.assertFalse(aff["1"]["is_24h"])
 
+    def test_enseigne_jointe(self):
+        import main
+        main._enseignes = {"1": {"enseigne": "Total", "nom": "Station Total"}}
+        try:
+            r = self.c.get("/stations", params={"cp": "77000", "carburant": "gazole", "dist": 50})
+            s = [x for x in r.json()["stations"] if x["id"] == "1"][0]
+            self.assertEqual(s["enseigne"], "Total")
+            self.assertEqual(s["nom"], "Station Total")
+        finally:
+            main._enseignes = None
+
+    def test_enseignes_absentes(self):
+        import main
+        main._enseignes = None
+        main.ENSEIGNES_FILE = main.Path("/tmp/nope-enseignes.json")
+        try:
+            self.assertEqual(main.get_enseignes(), {})
+        finally:
+            main.ENSEIGNES_FILE = main.Path(__file__).resolve().parent.parent / "enseignes.json"
+            main._enseignes = None
+
     def test_limite_resultats(self):
         global STATIONS
         saved = STATIONS

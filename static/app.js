@@ -60,8 +60,8 @@ export function stationsHTML(arr, { mn, mx, L, carb = '' }) {
   return arr.map((x, i) => `
 <div class="st" data-i="${i}" tabindex="0" role="button" aria-expanded="false"><div class="top"><span class="rk">${i + 1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
 ${x.prix === mn ? '<span class="badge">Meilleur prix</span>' : ''}</div>
-<div><b>${esc(x.adresse) || 'Adresse inconnue'}</b></div>
-<div class="addr">${esc(x.ville)}${x.distance_km != null ? ` · à ${String(x.distance_km).replace('.', ',')} km` : ''} · ${x.date ? new Date(x.date).toLocaleDateString('fr-FR') : ''}${x.jours != null ? ` · il y a ${x.jours} j` : ''}</div>
+<div><b>${esc(x.enseigne || x.nom || x.adresse) || 'Adresse inconnue'}</b></div>
+<div class="addr">${(x.enseigne || x.nom) && x.adresse ? esc(x.adresse) + ' · ' : ''}${esc(x.ville)}${x.distance_km != null ? ` · à ${String(x.distance_km).replace('.', ',')} km` : ''} · ${x.date ? new Date(x.date).toLocaleDateString('fr-FR') : ''}${x.jours != null ? ` · il y a ${x.jours} j` : ''}</div>
 <div class="fiab">${x.perime ? `<span class="badge old">Prix vieux de ${x.jours} j</span>` : ''}${x.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(x.rupture))}</span>` : ''}${x.affluence ? affBadge(x.affluence) : ''}</div>
 <div class="tot">Plein ${L} L : ${pf2(x.total_cost)} €${x.distance_km != null ? ' détour inclus' : ''}</div>
 <div class="eco">${x.prix === mn ? '—' : `Économie : ${pf2((mx - x.prix) * L)} € sur un plein de ${L} L`}</div>
@@ -153,7 +153,7 @@ export function leafletPlan(arr, { sel, pos }) {
   const markers = pts.map(({ x, i }) => ({
     i, lat: x.lat, lon: x.lon,
     html: `<div class="mk ${markerClass(x.prix, mn, mx)}${sel === i ? ' sel' : ''}">${pf2(x.prix)} €</div>`,
-    popup: `<b>${pf(x.prix)} €</b><br>${esc(x.adresse)}<br>${esc(x.ville)}`,
+    popup: `<b>${pf(x.prix)} €${(x.enseigne || x.nom) ? ' · ' + esc(x.enseigne || x.nom) : ''}</b><br>${esc(x.adresse)}<br>${esc(x.ville)}`,
   }));
   if (pts.length === 1 && !pos) {
     return { markers, user: null, bounds: null, center: [pts[0].x.lat, pts[0].x.lon], zoom: PLAN_ZOOM_SINGLE };

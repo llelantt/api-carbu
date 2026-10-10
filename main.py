@@ -124,6 +124,7 @@ async def fetch_stations(cp, carburant, lat=None, lon=None, dist=None):
         ouv = ouvert_actuellement(x.get("horaires"), x.get("horaires_automate_24_24"))
         serv = x.get("services_service") or []
         g = x.get("geom") or {}
+        info = get_enseignes().get(str(x.get("id")).replace(" ", ""), {})
         fuels = {}
         for c in sorted(CARBURANTS):
             p, m = x.get(f"{c}_prix"), x.get(f"{c}_maj")
@@ -138,6 +139,7 @@ async def fetch_stations(cp, carburant, lat=None, lon=None, dist=None):
                          "lat": g.get("lat"), "lon": g.get("lon"), "jours": j,
                          "perime": j is not None and j > SEUIL_FRAICHEUR,
                          "rupture": rtype, "services": serv, "carburants": fuels,
+                         "enseigne": info.get("enseigne"), "nom": info.get("nom"),
                          "distance_km": (haversine(lat, lon, g.get("lat"), g.get("lon"))
                                          if g.get("lat") is not None else None),
                          "affluence": {**calc_affluence(ouv, x.get("pop"), len(serv)),
@@ -225,6 +227,21 @@ def calc_affluence(ouvert, pop, nb_services, now=None):
     if nb_services >= 5 or pop == "A":
         score = min(2, score + 1)
     return {"niveau": ("fluide", "modérée", "dense")[score], "ouvert": ouvert}
+
+
+ENSEIGNES_FILE = Path(__file__).parent / "enseignes.json"
+_enseignes = None
+
+
+def get_enseignes():
+    global _enseignes
+    if _enseignes is None:
+        try:
+            import json
+            _enseignes = json.loads(ENSEIGNES_FILE.read_text())
+        except (OSError, ValueError):
+            _enseignes = {}
+    return _enseignes
 
 
 def load_histo():
