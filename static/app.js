@@ -206,6 +206,18 @@ export function trendHTML(t) {
   const label = flat ? 'prix stables sur 7 jours' : `prix en ${up ? 'hausse' : 'baisse'} de ${pf(v)} € sur 7 jours`;
   return `<span class="trend ${cls}" role="img" aria-label="${label}">${arrow} ${t.variation >= 0 ? '+' : '−'}${pf(v)} € sur 7 j</span>`;
 }
+export function detourBannerHTML(d, lo, hi, kmLo) {
+  return `<b>${d.vaut_le_coup ? '✅' : '❌'} ${esc(d.message)}</b><br><span class="addr">${esc(lo.adresse)} · ${esc(lo.ville)} · à ${String(kmLo).replace('.', ',')} km · Économie vs ${esc(hi.adresse)} : <span class="led sm">${d.economy_vs_nearest >= 0 ? '+' : ''}${pf2(d.economy_vs_nearest)} €</span></span><div class="go">Y aller ›</div>`;
+}
+export function sameStationHTML(st) {
+  return `<b>Pas de détour : la station la plus proche (${esc(st.adresse) || ''}) est déjà la moins chère.</b><div class="go">Y aller ›</div>`;
+}
+export function wireDetourClick(el, st) {
+  el.setAttribute('tabindex', '0');
+  el.setAttribute('role', 'button');
+  el.onclick = e => { if (e.target.closest('a,button')) return; openSheet(st, el); };
+  el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(st, el); } };
+}
 export function autoDetourParams(stations) {
   const withD = (stations || []).filter(x => x.distance_km != null);
   if (!withD.length) return null;
@@ -551,7 +563,8 @@ if (hasDOM) {
           if (!auto) return;
           if (auto.same) {
             el.hidden = false;
-            el.innerHTML = `<b>Pas de détour : la station la plus proche (${esc(auto.station.adresse) || ''}) est déjà la moins chère.</b>`;
+            el.innerHTML = sameStationHTML(auto.station);
+            wireDetourClick(el, auto.station);
             return;
           }
           q = { prix_proche: auto.prix_proche, km_proche: auto.km_proche, prix_loin: auto.prix_loin, km_loin: auto.km_loin, conso: co, plein: vo };
@@ -568,7 +581,8 @@ if (hasDOM) {
           const d = await jd(r);
           if (!r.ok) return;
           el.hidden = false;
-          el.innerHTML = `<b>${d.vaut_le_coup ? '✅' : '❌'} ${esc(d.message)}</b><br><span class="addr">${esc(lo.adresse)} · ${esc(lo.ville)} · à ${String(q.km_loin).replace('.', ',')} km · Économie vs ${esc(hi.adresse)} : <span class="led sm">${d.economy_vs_nearest >= 0 ? '+' : ''}${pf2(d.economy_vs_nearest)} €</span></span>`;
+          el.innerHTML = detourBannerHTML(d, lo, hi, q.km_loin);
+          wireDetourClick(el, lo);
         } catch { /* détour optionnel */ }
       }
       lastS = s.stations; lastT = t; lastMax = t.max; lastL = +vo || 50; lastCarb = carb;

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
   sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple, trendHTML, autoDetourParams,
+  detourBannerHTML, sameStationHTML, wireDetourClick,
   renderList, setTestState, initSheet, loadHideClosed, saveHideClosed,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
@@ -593,5 +594,26 @@ describe('autoDetourParams', () => {
   it('sans distances -> null', () => {
     expect(autoDetourParams([station({ distance_km: null })])).toBeNull();
     expect(autoDetourParams([])).toBeNull();
+  });
+});
+
+describe('bannière détour cliquable', () => {
+  const d = { vaut_le_coup: true, message: 'OK', economy_vs_nearest: 4.01 };
+  const lo = station({ adresse: 'Rue B', ville: 'V' });
+  const hi = station({ adresse: 'Rue A', ville: 'V' });
+  it('contenu + indice Y aller', () => {
+    const h = detourBannerHTML(d, lo, hi, 10);
+    expect(h).toContain('Rue B');
+    expect(h).toContain('Y aller ›');
+    expect(sameStationHTML(lo)).toContain('Y aller ›');
+  });
+  it('clic bannière -> panneau Y aller', () => {
+    document.body.innerHTML = '<div id="banner"></div><div id="sheet" hidden><div id="sheet-card"></div></div>';
+    const el = document.getElementById('banner');
+    el.innerHTML = detourBannerHTML(d, lo, hi, 10);
+    wireDetourClick(el, lo);
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.getElementById('sheet').hidden).toBe(false);
+    expect(document.getElementById('sheet-title').textContent).toContain('Rue B');
   });
 });
