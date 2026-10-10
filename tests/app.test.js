@@ -316,6 +316,30 @@ describe('panneau Y aller', () => {
     closeSheet();
     expect(document.getElementById('sheet').hidden).toBe(true);
   });
+  it('caché au chargement : display none, aucun clic intercepté', () => {
+    const style = document.createElement('style');
+    style.textContent = '[hidden]{display:none!important}';
+    document.head.appendChild(style);
+    document.body.innerHTML = '<div id="sheet" hidden><div id="sheet-card"></div></div><button id="behind">x</button>';
+    const el = document.getElementById('sheet');
+    expect(el.hidden).toBe(true);
+    expect(getComputedStyle(el).display).toBe('none');
+    let clicked = false;
+    document.getElementById('behind').addEventListener('click', () => { clicked = true; });
+    document.getElementById('behind').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(clicked).toBe(true);
+    style.remove();
+  });
+  it('station vide ne fait rien, Échap ferme', () => {
+    document.body.innerHTML = '<div id="sheet" hidden><div id="sheet-card"></div></div>';
+    initSheet();
+    openSheet({}, null);
+    expect(document.getElementById('sheet').hidden).toBe(true);
+    openSheet(station(), null);
+    expect(document.getElementById('sheet').hidden).toBe(false);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.getElementById('sheet').hidden).toBe(true);
+  });
   it('verrouille le défilement à l’ouverture, libère à la fermeture', () => {
     setup();
     openSheet(station(), null);
