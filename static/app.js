@@ -426,9 +426,14 @@ if (hasDOM) {
       document.getElementById('adr').value = '';
       document.getElementById('sugg').innerHTML = '';
       document.getElementById('geo').style.display = 'flex';
-      msg.textContent = 'Position détectée, clique Rechercher.'; msg.className = '';
       refreshDopts();
-    }, () => { msg.textContent = 'Position refusée ou indisponible.'; msg.className = 'err'; });
+      msg.textContent = 'Position détectée, clique Rechercher.'; msg.className = '';
+    }, err => {
+      msg.className = 'err';
+      if (err && err.code === 1) msg.textContent = 'Localisation refusée : autorise-la dans les réglages du téléphone (Confidentialité > Localisation) puis du navigateur.';
+      else if (err && err.code === 3) msg.textContent = 'Délai dépassé : réessaie dehors ou près d’une fenêtre.';
+      else msg.textContent = 'Position indisponible : active le GPS/localisation du téléphone et réessaie.';
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
   });
   document.getElementById('unclear').addEventListener('click', e => {
     e.preventDefault();
