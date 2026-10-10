@@ -22,15 +22,19 @@ export const openState = a => {
   return 'unknown';
 };
 export const affBadge = a => {
+  const s = openState(a);
   const st = {
-    '24h': '<span class="badge fl">Ouvert 24h/24</span>',
-    open: '<span class="badge fl">Ouvert</span>',
-    closed: '<span class="badge fe">Fermé</span>',
-    unknown: '<span class="badge fe">Horaires inconnus</span>',
-  }[openState(a)];
-  if (a && a.niveau === 'fermé') return st;
-  const c = { fluide: 'fl', 'modérée': 'mo', dense: 'de' }[(a && a.niveau) || ''] || 'fe';
-  return `${st}<span class="badge ${c}">Affluence ${a.niveau}</span>`;
+    '24h': '<span class="badge st-open">Ouvert 24h/24</span>',
+    open: '<span class="badge st-open">Ouvert</span>',
+    closed: '<span class="badge st-closed">Fermé</span>',
+    unknown: '<span class="badge st-unknown">Horaires inconnus</span>',
+  }[s];
+  const stateLabel = { '24h': 'ouverte 24h/24', open: 'ouverte', closed: 'fermée', unknown: 'aux horaires inconnus' }[s];
+  const affLabel = (a && a.niveau && a.niveau !== 'fermé') ? `, affluence ${a.niveau}` : '';
+  const aff = affLabel
+    ? `<span class="badge ${{ fluide: 'fl', 'modérée': 'mo', dense: 'de' }[a.niveau] || 'fe'} aff">Affluence ${a.niveau}</span>`
+    : '';
+  return `<span role="img" aria-label="Station ${stateLabel}${affLabel}">${st}${aff}</span>`;
 };
 export const navLinks = x => {
   const dest = (x.lat != null && x.lon != null) ? `${x.lat},${x.lon}` : encodeURIComponent(`${x.adresse || ''} ${x.ville || ''}`);

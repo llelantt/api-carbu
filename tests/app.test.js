@@ -97,6 +97,14 @@ describe('affBadge', () => {
     expect((h.match(/<span class="badge/g) || []).length).toBe(2);
     expect(h.indexOf('>Ouvert<')).toBeLessThan(h.indexOf('Affluence'));
   });
+  it('couleurs d’état et aria-label lisible', () => {
+    const h = affBadge({ niveau: 'dense', ouvert: true });
+    expect(h).toContain('st-open');
+    expect(h).toContain('aria-label="Station ouverte, affluence dense"');
+    expect(h).toContain(' aff">Affluence dense');
+    expect(affBadge({ niveau: 'fermé', ouvert: false })).toContain('st-closed');
+    expect(affBadge({ niveau: 'fluide', ouvert: null })).toContain('st-unknown');
+  });
   it('fermé -> un seul badge', () => {
     const h = affBadge({ niveau: 'fermé', ouvert: false });
     expect(h).toContain('>Fermé<');
