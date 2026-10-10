@@ -514,6 +514,10 @@ describe('page servie', () => {
     expect(sheet.hidden).toBe(true);
     expect(getComputedStyle(sheet).display).toBe('none');
   });
+  it('CP facultatif (géo possible), carburant requis', () => {
+    expect(document.getElementById('cp').hasAttribute('required')).toBe(false);
+    expect(document.getElementById('carb').hasAttribute('required')).toBe(true);
+  });
 });
 
 describe('stations fermées', () => {
