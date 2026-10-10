@@ -28,6 +28,7 @@ npm test   # vitest + jsdom (aussi lancé par la CI GitHub)
 - `GET /api` — nom de l'API et liste des routes
 - `GET /stations?cp=77270&carburant=gazole` — stations triées + fiabilité (jours depuis màj, prix périmés > 7 j, stations en rupture) + affluence (ouvert/fermé d'après horaires, niveau estimé)
 - `GET /stations?lat=48.95&lon=2.60&dist=10&carburant=gazole` — idem autour de ta position (géolocalisation, rayon en km, distance par station)
+- `GET /v1/geocode?cp=77270` — centre (lat, lon) d'un code postal (un CP est géocodé puis cherché par distance, jamais filtré exact)
 - `GET /stations/moins-chere?cp=77270&carburant=gazole` — la moins chère
 - `GET /stats?cp=77270&carburant=e10` — moyenne, min, max, nombre de stations
 - `GET /stations?cp=77270&carburant=gazole&km_proche=2&km_loin=10` — idem + verdict détour (facultatif)

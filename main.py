@@ -60,35 +60,58 @@ def haversine(lat1, lon1, lat2, lon2):
         return None
 
 
+async def geocode_cp(cp):
+    """Centre (lat, lon, label) d'un code postal via l'API Adresse officielle."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get("https://api-adresse.data.gouv.fr/search/",
+                                 params={"q": cp, "type": "municipality", "limit": 1})
+            r.raise_for_status()
+            feats = r.json().get("features", [])
+    except (httpx.TimeoutException, httpx.ConnectError):
+        return None, None, None, JSONResponse({"detail": "Géocodage indisponible."}, status_code=503)
+    except httpx.HTTPError:
+        return None, None, None, JSONResponse({"detail": "Géocodage indisponible."}, status_code=503)
+    try:
+        lon, lat = feats[0]["geometry"]["coordinates"]
+        return lat, lon, feats[0]["properties"].get("label"), None
+    except (KeyError, TypeError, IndexError):
+        return None, None, None, JSONResponse({"detail": "Code postal introuvable."}, status_code=404)
+
+
 async def fetch_stations(cp, carburant, lat=None, lon=None, dist=None):
     carb = carburant.lower()
     prix_col, maj_col = f"{carb}_prix", f"{carb}_maj"
-    geo = lat is not None and lon is not None
-    where = (f'within_distance(geom, geom\'POINT({lon} {lat})\', {dist or 10}km)'
-             if geo else f'cp="{cp}"')
+    label = None
+    if lat is None or lon is None:
+        lat, lon, label, err = await geocode_cp(cp)
+        if err:
+            return None, None, None, err
+    centre = {"lat": lat, "lon": lon, "label": label}
+    where = f'within_distance(geom, geom\'POINT({lon} {lat})\', {dist or 10}km)'
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get(DATA_URL, params={"where": where, "limit": 100})
             r.raise_for_status()
             results = r.json().get("results", [])
     except (httpx.TimeoutException, httpx.ConnectError):
-        return None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
+        return None, None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
     except httpx.HTTPStatusError as e:
         s = e.response.status_code
         if s == 401:
-            return None, None, JSONResponse(
+            return None, None, None, JSONResponse(
                 {"detail": "Accès refusé par l'API de l'État (clé invalide)."}, status_code=401)
         if s == 429:
             ra = e.response.headers.get("Retry-After")
-            return None, None, JSONResponse(
+            return None, None, None, JSONResponse(
                 {"detail": "Trop de requêtes, patiente avant de réessayer.", "retry_after": ra},
                 status_code=429, headers={"Retry-After": ra} if ra else None)
         if 500 <= s < 600:
-            return None, None, JSONResponse(
+            return None, None, None, JSONResponse(
                 {"detail": "L'API de l'État renvoie une erreur."}, status_code=502)
-        return None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
+        return None, None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
     except httpx.HTTPError:
-        return None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
+        return None, None, None, JSONResponse({"detail": "L'API de l'État ne répond pas."}, status_code=503)
 
     stations, ruptures = [], []
     for x in results:
@@ -116,20 +139,10 @@ async def fetch_stations(cp, carburant, lat=None, lon=None, dist=None):
                          "perime": j is not None and j > SEUIL_FRAICHEUR,
                          "rupture": rtype, "services": serv, "carburants": fuels,
                          "distance_km": (haversine(lat, lon, g.get("lat"), g.get("lon"))
-                                         if geo and g.get("lat") is not None else None),
+                                         if g.get("lat") is not None else None),
                          "affluence": calc_affluence(ouv, x.get("pop"), len(serv))})
     stations.sort(key=lambda s: s["prix"])
-    if not geo and dist:
-        cc = [(s["lat"], s["lon"]) for s in stations if s.get("lat") is not None]
-        if cc:
-            cla = sum(p[0] for p in cc) / len(cc)
-            clo = sum(p[1] for p in cc) / len(cc)
-            for s in stations:
-                s["distance_km"] = (haversine(cla, clo, s.get("lat"), s.get("lon"))
-                                    if s.get("lat") is not None else None)
-            stations = [s for s in stations
-                        if s["distance_km"] is not None and s["distance_km"] <= dist]
-    return stations, ruptures, None
+    return stations, ruptures, centre, None
 
 
 def jours_depuis(maj):
@@ -290,9 +303,20 @@ def api_root():
             "GET /detour?prix_proche=1.90&km_proche=2&prix_loin=1.80&km_loin=10&conso=6.5&plein=50": "le détour vaut-il le coup ? (km = aller-retour)",
             "GET /alertes/check?cp=77270&carburant=gazole&seuil=1.80": "alerte si le prix min passe sous le seuil",
             "GET /prevision?cp=77270&carburant=gazole": "faut-il faire le plein aujourd'hui ou attendre ?",
+            "GET /v1/geocode?cp=77270": "centre (lat, lon) d'un code postal",
         },
         "carburants": sorted(CARBURANTS),
     }
+
+
+@app.get("/v1/geocode")
+async def geocode(cp: str = Query(...)):
+    if not cp or not (cp.isdigit() and len(cp) == 5):
+        return JSONResponse({"detail": "Indique un code postal (5 chiffres)."}, status_code=400)
+    lat, lon, label, err = await geocode_cp(cp)
+    if err:
+        return err
+    return {"cp": cp, "lat": lat, "lon": lon, "label": label}
 
 
 @app.get("/stations")
@@ -310,15 +334,16 @@ async def stations(
     err = check_params(cp, carburant, lat, lon)
     if err:
         return err
-    data, ruptures, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    data, ruptures, centre, err = await fetch_stations(cp, carburant, lat, lon, dist)
     if err:
         return err
     if not data:
         return JSONResponse({"detail": "Aucune station trouvée.", "ruptures": ruptures}, status_code=404)
     resp = {"cp": cp, "carburant": carburant.lower(), "nombre": len(data), "stations": data,
-            "prix_perimes": sum(1 for s in data if s["perime"]), "ruptures": ruptures}
-    if lat is not None and lon is not None:
-        resp["position"] = {"lat": lat, "lon": lon, "dist": dist}
+            "prix_perimes": sum(1 for s in data if s["perime"]), "ruptures": ruptures,
+            "position": {"lat": centre["lat"], "lon": centre["lon"], "dist": dist or 10}}
+    if centre.get("label"):
+        resp["centre"] = centre
     for s in data:
         km_ar = 2 * s["distance_km"] if s.get("distance_km") is not None else 0.0
         s["total_cost"] = total_cout(s["prix"], km_ar, conso, plein)
@@ -351,7 +376,7 @@ async def moins_chere(
     err = check_params(cp, carburant, lat, lon)
     if err:
         return err
-    data, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    data, _, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
     if err:
         return err
     if not data:
@@ -369,7 +394,7 @@ async def stats(
     err = check_params(cp, carburant, lat, lon)
     if err:
         return err
-    data, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    data, _, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
     if err:
         return err
     if not data:
@@ -407,7 +432,7 @@ async def prevision(
     err = check_params(cp, carburant, lat, lon)
     if err:
         return err
-    data, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    data, _, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
     if err:
         return err
     if not data:
@@ -428,7 +453,7 @@ async def alertes_check(
     err = check_params(cp, carburant, lat, lon)
     if err:
         return err
-    data, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
+    data, _, _, err = await fetch_stations(cp, carburant, lat, lon, dist)
     if err:
         return err
     if not data:
