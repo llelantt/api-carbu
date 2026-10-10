@@ -419,7 +419,7 @@ if (hasDOM) {
   alBox = document.getElementById('alertes');
 
   document.getElementById('loc').addEventListener('click', () => {
-    if (!navigator.geolocation) { msg.textContent = 'Géolocalisation non supportée.'; msg.className = 'err'; return; }
+    if (!navigator.geolocation) { msg.textContent = 'Géolocalisation indisponible ici (connexion non sécurisée ?). Essaie en HTTPS ou entre un code postal.'; msg.className = 'err'; return; }
     msg.textContent = 'Localisation…'; msg.className = '';
     navigator.geolocation.getCurrentPosition(p => {
       pos = { lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4) };
