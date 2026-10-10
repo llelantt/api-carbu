@@ -99,6 +99,13 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .fuel>span:nth-child(3){text-align:left}
 .fuel .badge{height:22px;line-height:22px;padding:0 10px;font-size:12px;display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fuel .badge.old{background:transparent;color:var(--mut);border-color:var(--line)}
+@media(max-width:480px){
+  .fuel{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"nom prix" "statut prix";column-gap:8px;height:auto;min-height:40px}
+  .fuel>span:nth-child(1){grid-area:nom;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fuel>span:nth-child(2){grid-area:prix}
+  .fuel>span:nth-child(3){grid-area:statut}
+  .fuel .badge{font-size:11px;height:20px;line-height:20px}
+}
 .curve svg{width:100%;height:auto;display:block}
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.92)}
