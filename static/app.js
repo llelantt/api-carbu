@@ -23,7 +23,7 @@ export const navLinks = x => {
   const u = { w: `https://waze.com/ul?ll=${dest}&navigate=yes`, g: `https://www.google.com/maps/dir/?api=1&destination=${dest}`, p: `https://maps.apple.com/?daddr=${dest}` };
   return `Y aller : <a href="${u.w}" target="_blank" rel="noopener">Waze</a><a href="${u.g}" target="_blank" rel="noopener">Google Maps</a><a href="${u.p}" target="_blank" rel="noopener">Plans</a>`;
 };
-export const fuelsRows = x => Object.entries(x.carburants || {}).map(([c, f]) => `<div class="fuel"><span>${c.toUpperCase()}</span><span>${f.prix != null ? `<span class="led sm">${pf(f.prix)} €</span>` : '<span class="addr">—</span>'}</span><span>${f.perime ? `<span class="badge old">Prix ancien (${f.jours} j)</span>` : ''}${f.rupture ? `<span class="badge rup">Rupture ${esc(f.rupture)}</span>` : ''}</span></div>`).join('');
+export const fuelsRows = x => Object.entries(x.carburants || {}).map(([c, f]) => `<div class="fuel"><span>${c.toUpperCase()}</span><span>${f.prix != null ? `<span class="led sm">${pf(f.prix)} €</span>` : '<span class="dash">—</span>'}</span><span>${f.perime ? `<span class="badge old">Prix ancien (${f.jours} j)</span>` : ''}${f.rupture ? `<span class="badge rup">Rupture ${esc(f.rupture)}</span>` : ''}</span></div>`).join('');
 export function curve(h) {
   h = h || [];
   if (h.length < 2) return '<p class="addr">Historique insuffisant : reviens après quelques recherches.</p>';
