@@ -182,7 +182,7 @@ ${badgeMin != null && x.prix === badgeMin ? '<span class="badge">Meilleur prix</
 <div class="addr">${(x.enseigne || x.nom) && x.adresse ? esc(x.adresse) + ' · ' : ''}${esc(x.ville)}${x.distance_km != null ? ` · à ${String(x.distance_km).replace('.', ',')} km` : ''} · ${x.date ? new Date(x.date).toLocaleDateString('fr-FR') : ''}${x.jours != null ? ` · il y a ${x.jours} j` : ''}</div>
 <div class="fiab">${x.perime ? `<span class="badge old">Prix vieux de ${x.jours} j</span>` : ''}${x.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(x.rupture))}</span>` : ''}${x.affluence ? affBadge(x.affluence) : ''}</div>
 <div class="tot">Plein ${L} L : ${pf2(x.total_cost)} €${x.distance_km != null ? ' détour inclus' : ''}</div>
-<div class="eco">${x.prix === mn ? '—' : `Économie : ${pf2((mx - x.prix) * L)} € sur un plein de ${L} L`}</div>
+<div class="eco">${x.prix === mn ? trendHTML(lastTrend) : `Économie : ${pf2((mx - x.prix) * L)} € sur un plein de ${L} L`}</div>
 <div class="detail" hidden>
 <div class="fuels">${fuelsRows(x, carb)}</div>
 ${(x.services || []).length ? `<div class="fiab">${x.services.map(s => `<span class="badge">${esc(s)}</span>`).join('')}</div>` : ''}
@@ -196,6 +196,15 @@ export function suggestHTML(fs) {
 }
 export function zoneSentence(nombre, dist, lieu, carb) {
   return `${nombre} station(s) dans un rayon de ${dist} km autour de ${lieu} · ${carb.toUpperCase()}`;
+}
+export function trendHTML(t) {
+  if (!t || t.tendance === 'inconnu' || t.points < 2) return '';
+  const up = t.tendance === 'hausse', flat = t.tendance === 'stable';
+  const cls = up ? 'up' : (flat ? 'flat' : 'down');
+  const arrow = up ? '↑' : (flat ? '→' : '↓');
+  const v = Math.abs(t.variation);
+  const label = flat ? 'prix stables sur 7 jours' : `prix en ${up ? 'hausse' : 'baisse'} de ${pf(v)} € sur 7 jours`;
+  return `<span class="trend ${cls}" role="img" aria-label="${label}">${arrow} ${t.variation >= 0 ? '+' : '−'}${pf(v)} € sur 7 j</span>`;
 }
 export function previsionLine(p) {
   if (p.tendance === 'inconnu' || p.points < 2) return "Tendance 7 j : — · pas encore assez d'historique";
@@ -221,7 +230,7 @@ const hasDOM = typeof document !== 'undefined' && typeof document.getElementById
 let f = null, msg = null, box = null, cards = null;
 let fa = null, msga = null, alBox = null;
 let pos = null, lastStations = [];
-let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50, lastCarb = '', lastShown = [];
+let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50, lastCarb = '', lastShown = [], lastTrend = null;
 let lastCenter = null, lastDist = 0;
 let sel = null, ctl = null, req = 0;
 const jd = async r => { try { return await r.json() } catch { return {} } };
@@ -499,11 +508,12 @@ if (hasDOM) {
       }
       try {
         const p = await jd(rP);
+        lastTrend = rP.ok ? p : null;
         if (rP.ok) {
           const el = document.getElementById('prev'); el.hidden = false;
           el.innerHTML = `<b>${p.conseil}</b><br><span class="addr">${previsionLine(p)}</span>`;
         }
-      } catch { /* prévision optionnelle */ }
+      } catch { lastTrend = null; /* prévision optionnelle */ }
       document.getElementById('c-moy').textContent = pf(t.moyenne) + ' €';
       document.getElementById('c-min').textContent = pf(t.min) + ' €';
       document.getElementById('c-max').textContent = pf(t.max) + ' €';

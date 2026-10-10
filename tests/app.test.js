@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
-  sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple,
+  sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple, trendHTML,
   renderList, setTestState, initSheet, loadHideClosed, saveHideClosed,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
@@ -552,5 +552,23 @@ describe('stations fermées', () => {
     expect(loadHideClosed()).toBe(false);
     saveHideClosed(true);
     expect(loadHideClosed()).toBe(true);
+  });
+});
+
+describe('trendHTML', () => {
+  it('inconnue -> rien', () => {
+    expect(trendHTML({ tendance: 'inconnu', variation: 0, points: 1 })).toBe('');
+    expect(trendHTML({ tendance: 'hausse', variation: 0.01, points: 1 })).toBe('');
+    expect(trendHTML(null)).toBe('');
+  });
+  it('baisse verte, hausse rouge, avec aria-label', () => {
+    const down = trendHTML({ tendance: 'baisse', variation: -0.012, points: 5 });
+    expect(down).toContain('↓');
+    expect(down).toContain('−0,012 € sur 7 j');
+    expect(down).toContain('trend down');
+    expect(down).toContain('aria-label="prix en baisse de 0,012 € sur 7 jours"');
+    const up = trendHTML({ tendance: 'hausse', variation: 0.02, points: 5 });
+    expect(up).toContain('↑');
+    expect(up).toContain('trend up');
   });
 });

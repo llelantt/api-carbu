@@ -91,6 +91,9 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
   .sheet{border-radius:12px 12px 0 0;max-width:none}
 }
 .eco{color:var(--eco);font-weight:600;font-size:.9rem;margin-top:2px}
+.trend.down{color:var(--eco);font-weight:700}
+.trend.up{color:#dc2626;font-weight:700}
+.trend.flat{color:var(--mut);font-weight:700}
 #msg{text-align:center;color:var(--mut);margin:16px 0;font-size:13px}
 .ferr{color:#b91c1c;font-size:12px}
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px}
