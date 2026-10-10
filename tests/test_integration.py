@@ -14,10 +14,10 @@ def hav(lat1, lon1, lat2, lon2):
     return 2 * 6371.0 * asin(sqrt(a))
 
 
-def station(i, cp, lat, lon, prix):
+def station(i, cp, lat, lon, prix, auto="Non"):
     return {
         "id": i, "adresse": f"Rue {i}", "ville": f"Ville{i}", "cp": cp,
-        "pop": "R", "horaires": None, "horaires_automate_24_24": "Non",
+        "pop": "A", "horaires": None, "horaires_automate_24_24": auto,
         "services_service": [], "geom": {"lat": lat, "lon": lon},
         "gazole_prix": prix, "gazole_maj": "2026-10-09T00:00:00+00:00",
     }
@@ -25,7 +25,7 @@ def station(i, cp, lat, lon, prix):
 
 STATIONS = [
     station(1, "77000", 48.94, 2.61, 1.90),   # commune cherchée
-    station(2, "77100", 48.98, 2.65, 1.80),   # ~5 km
+    station(2, "77100", 48.98, 2.65, 1.80, auto="1"),   # ~5 km
     station(3, "77200", 49.40, 3.20, 2.00),   # ~65 km : hors rayon 50
     station(4, "77300", 48.60, 2.30, 1.85),   # ~44 km
 ]
@@ -100,6 +100,13 @@ class Integration(unittest.TestCase):
         self.assertEqual(d["nombre"], 3)
         self.assertEqual([s["prix"] for s in d["stations"]], [1.80, 1.85, 1.90])
         self.assertEqual(len({s["cp"] for s in d["stations"]}), 3)
+
+    def test_autoroute_24h(self):
+        r = self.c.get("/stations", params={"cp": "77000", "carburant": "gazole", "dist": 50})
+        aff = {s["id"]: s["affluence"] for s in r.json()["stations"]}
+        self.assertTrue(aff["2"]["is_24h"])
+        self.assertTrue(aff["2"]["ouvert"])
+        self.assertFalse(aff["1"]["is_24h"])
 
     def test_limite_resultats(self):
         global STATIONS

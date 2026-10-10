@@ -15,11 +15,13 @@ export function markerClass(p, mn, mx) {
 }
 // ---------- rendu ----------
 export const affBadge = a => {
-  const st = a.ouvert === true
-    ? '<span class="badge fl">Ouvert</span>'
-    : a.ouvert === false
-      ? '<span class="badge fe">Fermé</span>'
-      : '<span class="badge fe">Horaires inconnus</span>';
+  const st = a.is_24h
+    ? '<span class="badge fl">Ouvert 24h/24</span>'
+    : a.ouvert === true
+      ? '<span class="badge fl">Ouvert</span>'
+      : a.ouvert === false
+        ? '<span class="badge fe">Fermé</span>'
+        : '<span class="badge fe">Horaires inconnus</span>';
   if (a.niveau === 'fermé') return st;
   const c = { fluide: 'fl', 'modérée': 'mo', dense: 'de' }[a.niveau] || 'fe';
   return `${st}<span class="badge ${c}">Affluence ${a.niveau}</span>`;

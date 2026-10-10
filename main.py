@@ -140,7 +140,8 @@ async def fetch_stations(cp, carburant, lat=None, lon=None, dist=None):
                          "rupture": rtype, "services": serv, "carburants": fuels,
                          "distance_km": (haversine(lat, lon, g.get("lat"), g.get("lon"))
                                          if g.get("lat") is not None else None),
-                         "affluence": calc_affluence(ouv, x.get("pop"), len(serv))})
+                         "affluence": {**calc_affluence(ouv, x.get("pop"), len(serv)),
+                                       "is_24h": (x.get("horaires_automate_24_24") or "").strip().lower() in ("1", "oui", "yes", "true")}})
     stations.sort(key=lambda s: s["prix"])
     return stations, ruptures, centre, None
 
@@ -157,7 +158,7 @@ def jours_depuis(maj):
 
 def ouvert_actuellement(horaires, automate, now=None):
     now = now or datetime.now(ZoneInfo("Europe/Paris"))
-    if (automate or "") == "1":
+    if (automate or "").strip().lower() in ("1", "oui", "yes", "true"):
         return True
     try:
         import json

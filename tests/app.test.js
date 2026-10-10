@@ -97,6 +97,11 @@ describe('affBadge', () => {
     expect(h).toContain('Horaires inconnus');
     expect(h).toContain('Affluence dense');
   });
+  it('24h/24 -> Ouvert 24h/24 sans mention simple', () => {
+    const h = affBadge({ niveau: 'fluide', ouvert: true, is_24h: true });
+    expect(h).toContain('Ouvert 24h/24');
+    expect(h).not.toContain('>Ouvert<');
+  });
 });
 
 describe('stationsHTML', () => {
