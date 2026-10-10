@@ -14,11 +14,19 @@ class SecurityHeaders(unittest.TestCase):
 
     def test_csp(self):
         csp = self.c.get("/").headers.get("content-security-policy", "")
-        self.assertIn("https://tile.openstreetmap.org", csp)
         self.assertIn("https://api-adresse.data.gouv.fr", csp)
         self.assertIn("script-src 'self'", csp)
         self.assertIn("style-src 'self'", csp)
         self.assertNotIn("unsafe-inline", csp)
+
+    def test_img_src_exact(self):
+        csp = self.c.get("/").headers.get("content-security-policy", "")
+        m = [d for d in csp.split(";") if d.strip().startswith("img-src")]
+        self.assertEqual(len(m), 1)
+        srcs = m[0].replace("img-src", "").split()
+        self.assertEqual(sorted(srcs), ["'self'", "https://tile.openstreetmap.org"])
+        for bad in ("*", "https:", "http:", "data:"):
+            self.assertNotIn(bad, srcs)
 
     def test_referrer_policy(self):
         rp = self.c.get("/").headers.get("referrer-policy")
