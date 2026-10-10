@@ -107,6 +107,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .checkline{width:100%;display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--mut);font-size:14px}
 .checkline input{flex:none;width:16px;height:16px;min-width:0}
 #dopts{width:100%;gap:8px;flex-wrap:wrap;display:none}
+#kms{display:flex;gap:8px;flex-wrap:wrap;width:100%}
+#kms input{flex:1;min-width:140px}
 #alertes{display:grid;gap:8px}
 .bd-green{border:2px solid var(--accent);margin-bottom:10px}
 .bd-amber{border:2px solid #f59e0b;margin-bottom:10px}

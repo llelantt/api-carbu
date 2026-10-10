@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
-  sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple, trendHTML,
+  sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple, trendHTML, autoDetourParams,
   renderList, setTestState, initSheet, loadHideClosed, saveHideClosed,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
@@ -570,5 +570,24 @@ describe('trendHTML', () => {
     const up = trendHTML({ tendance: 'hausse', variation: 0.02, points: 5 });
     expect(up).toContain('↑');
     expect(up).toContain('trend up');
+  });
+});
+
+describe('autoDetourParams', () => {
+  const st = (prix, d) => station({ prix, distance_km: d });
+  it('proche vs moins chère avec A/R', () => {
+    const a = autoDetourParams([st(1.9, 1), st(1.8, 5), st(2.0, 3)]);
+    expect(a.prix_proche).toBe(1.9);
+    expect(a.km_proche).toBe(2);
+    expect(a.prix_loin).toBe(1.8);
+    expect(a.km_loin).toBe(10);
+  });
+  it('même station -> same', () => {
+    const a = autoDetourParams([st(1.8, 1), st(1.9, 5)]);
+    expect(a.same).toBe(true);
+  });
+  it('sans distances -> null', () => {
+    expect(autoDetourParams([station({ distance_km: null })])).toBeNull();
+    expect(autoDetourParams([])).toBeNull();
   });
 });

@@ -206,6 +206,17 @@ export function trendHTML(t) {
   const label = flat ? 'prix stables sur 7 jours' : `prix en ${up ? 'hausse' : 'baisse'} de ${pf(v)} € sur 7 jours`;
   return `<span class="trend ${cls}" role="img" aria-label="${label}">${arrow} ${t.variation >= 0 ? '+' : '−'}${pf(v)} € sur 7 j</span>`;
 }
+export function autoDetourParams(stations) {
+  const withD = (stations || []).filter(x => x.distance_km != null);
+  if (!withD.length) return null;
+  const near = withD.reduce((a, b) => (a.distance_km <= b.distance_km ? a : b));
+  const cheap = [...stations].sort((a, b) => a.prix - b.prix)[0];
+  if (!cheap || near === cheap) return { same: true, station: cheap || near };
+  return {
+    prix_proche: near.prix, km_proche: near.distance_km * 2,
+    prix_loin: cheap.prix, km_loin: cheap.distance_km * 2, near, cheap,
+  };
+}
 export function previsionLine(p) {
   if (p.tendance === 'inconnu' || p.points < 2) return "Tendance 7 j : — · pas encore assez d'historique";
   return `Tendance 7 j : ${p.tendance} (${p.variation >= 0 ? '+' : ''}${pf(p.variation)} €) · ${p.points} relevé(s)`;
@@ -404,6 +415,7 @@ if (hasDOM) {
       document.getElementById('sugg').innerHTML = '';
       document.getElementById('geo').style.display = 'flex';
       msg.textContent = 'Position détectée, clique Rechercher.'; msg.className = '';
+      refreshDopts();
     }, () => { msg.textContent = 'Position refusée ou indisponible.'; msg.className = 'err'; });
   });
   document.getElementById('unclear').addEventListener('click', e => {
@@ -412,6 +424,7 @@ if (hasDOM) {
     document.getElementById('geo').style.display = 'none';
     document.getElementById('adr').value = '';
     document.getElementById('sugg').innerHTML = '';
+    refreshDopts();
   });
   document.getElementById('cp').addEventListener('input', () => {
     if (pos) {
@@ -419,6 +432,7 @@ if (hasDOM) {
       document.getElementById('geo').style.display = 'none';
       document.getElementById('adr').value = '';
       document.getElementById('sugg').innerHTML = '';
+      refreshDopts();
     }
   });
   let sugT = null, sugCtl = null, lastFs = [];
@@ -437,6 +451,7 @@ if (hasDOM) {
     document.getElementById('sugg').innerHTML = '';
     document.getElementById('geo').style.display = 'flex';
     msg.textContent = 'Adresse détectée, clique Rechercher.'; msg.className = '';
+    refreshDopts();
   };
   document.getElementById('adr').addEventListener('input', e => {
     const q = e.target.value.trim();
@@ -444,6 +459,7 @@ if (hasDOM) {
     if (pos) {
       pos = null;
       document.getElementById('geo').style.display = 'none';
+      refreshDopts();
     }
     if (sugCtl) sugCtl.abort();
     if (q.length < 3) { document.getElementById('sugg').innerHTML = ''; return; }
@@ -457,9 +473,12 @@ if (hasDOM) {
       } catch (err) { if (!err || err.name !== 'AbortError') document.getElementById('sugg').innerHTML = '<span class="addr">Géocodage indisponible, utilise le code postal.</span>'; }
     }, 300);
   });
-  document.getElementById('dt').addEventListener('change', e => {
-    document.getElementById('dopts').style.display = e.target.checked ? 'flex' : 'none';
-  });
+  const refreshDopts = () => {
+    const on = document.getElementById('dt').checked;
+    document.getElementById('dopts').style.display = on ? 'flex' : 'none';
+    document.getElementById('kms').style.display = (on && pos) ? 'none' : 'flex';
+  };
+  document.getElementById('dt').addEventListener('change', refreshDopts);
   try {
     document.getElementById('hideClosed').checked = loadHideClosed();
   } catch { /* stockage indisponible */ }
@@ -494,8 +513,7 @@ if (hasDOM) {
     msg.textContent = 'Recherche en cours…'; msg.className = '';
     let zl = '', zcp = '';
     try {
-      let url = `/stations?${zoneP()}&carburant=${carb}`;
-      if (useD && kp !== '' && kl !== '') url += `&km_proche=${encodeURIComponent(kp)}&km_loin=${encodeURIComponent(kl)}&conso=${co}&plein=${vo}`;
+      const url = `/stations?${zoneP()}&carburant=${carb}`;
       const [rS, rT, rP] = await Promise.all([fetch(url, { signal: sig }), fetch(`/stats?${zoneP()}&carburant=${carb}`, { signal: sig }), fetch(`/prevision?${zoneP()}&carburant=${carb}`, { signal: sig })]);
       if (my !== req) return;
       const s = await jd(rS), t = await jd(rT);
@@ -525,14 +543,38 @@ if (hasDOM) {
       const ouv = s.stations.filter(x => { const o = openState(x.affluence); return o === 'open' || o === '24h'; }).length;
       if (per || rup) msg.textContent += ` · ${per ? per + ' prix de + de 7 j' : ''}${per && rup ? ' · ' : ''}${rup ? rup + ' station(s) en rupture' : ''}`;
       msg.textContent += ` · ${ouv}/${s.stations.length} ouverte(s)`;
-      if (s.detour) {
-        const d = s.detour, el = document.getElementById('detour'), lo = d.station_loin;
-        el.hidden = false;
-        el.innerHTML = `<b>${d.vaut_le_coup ? '✅' : '❌'} ${d.message}</b><br><span class="addr">${esc(lo.adresse)} · ${esc(lo.ville)} · à ${String(lo.distance_km).replace('.', ',')} km · Plein : <span class="led sm">${pf2(lo.total_cost)} €</span> détour inclus · Économie vs plus proche : <span class="led sm">${d.economy_vs_nearest >= 0 ? '+' : ''}${pf2(d.economy_vs_nearest)} €</span></span>`;
+      async function showDetour() {
+        const el = document.getElementById('detour');
+        let q = null, lo = null, hi = null;
+        if (pos) {
+          const auto = autoDetourParams(lastS);
+          if (!auto) return;
+          if (auto.same) {
+            el.hidden = false;
+            el.innerHTML = `<b>Pas de détour : la station la plus proche (${esc(auto.station.adresse) || ''}) est déjà la moins chère.</b>`;
+            return;
+          }
+          q = { prix_proche: auto.prix_proche, km_proche: auto.km_proche, prix_loin: auto.prix_loin, km_loin: auto.km_loin, conso: co, plein: vo };
+          lo = auto.cheap; hi = auto.near;
+        } else {
+          if (kp === '' || kl === '') return;
+          const byPrice = [...lastS].sort((a, b) => a.prix - b.prix);
+          lo = byPrice[0]; hi = byPrice[byPrice.length - 1];
+          q = { prix_proche: hi.prix, km_proche: kp, prix_loin: lo.prix, km_loin: kl, conso: co, plein: vo };
+        }
+        try {
+          const r = await fetch('/detour?' + new URLSearchParams(q), { signal: sig });
+          if (my !== req) return;
+          const d = await jd(r);
+          if (!r.ok) return;
+          el.hidden = false;
+          el.innerHTML = `<b>${d.vaut_le_coup ? '✅' : '❌'} ${esc(d.message)}</b><br><span class="addr">${esc(lo.adresse)} · ${esc(lo.ville)} · à ${String(q.km_loin).replace('.', ',')} km · Économie vs ${esc(hi.adresse)} : <span class="led sm">${d.economy_vs_nearest >= 0 ? '+' : ''}${pf2(d.economy_vs_nearest)} €</span></span>`;
+        } catch { /* détour optionnel */ }
       }
       lastS = s.stations; lastT = t; lastMax = t.max; lastL = +vo || 50; lastCarb = carb;
       if (s.position) { lastCenter = { lat: s.position.lat, lon: s.position.lon }; lastDist = s.position.dist; }
       renderList();
+      if (useD) await showDetour();
       if (my === req) btn.disabled = false;
     } catch (err) {
       if (err && err.name === 'AbortError') return;
