@@ -122,6 +122,33 @@ describe('affBadge', () => {
   });
 });
 
+describe('badges état au rendu', () => {
+  const cards = list => stationsHTML(list, { mn: 1, mx: 2, L: 50 });
+  it('inconnu / 24h / fermé', () => {
+    const html = cards([
+      station({ affluence: { niveau: 'dense', ouvert: null } }),
+      station({ affluence: { niveau: 'fluide', ouvert: true, is_24h: true } }),
+      station({ affluence: { niveau: 'fermé', ouvert: false } }),
+    ]);
+    expect(html).toContain('Horaires inconnus');
+    expect(html).toContain('Affluence dense');
+    expect(html).toContain('Ouvert 24h/24');
+    expect(html).toContain('>Fermé<');
+  });
+  it('chaque carte a son badge d’état', () => {
+    const html = cards([
+      station({ affluence: { niveau: 'fluide', ouvert: true } }),
+      station({ affluence: { niveau: 'modérée', ouvert: null } }),
+      station({ affluence: { niveau: 'fermé', ouvert: false } }),
+    ]);
+    const parts = html.split('<div class="st"').slice(1);
+    expect(parts.length).toBe(3);
+    for (const c of parts) {
+      expect(c).toMatch(/Ouvert 24h\/24|>Ouvert<|>Fermé<|Horaires inconnus/);
+    }
+  });
+});
+
 describe('stationsHTML', () => {
   it('neutralise les noms malveillants', () => {
     const html = stationsHTML([station({
