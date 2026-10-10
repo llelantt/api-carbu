@@ -400,7 +400,6 @@ if (hasDOM) {
     msg.textContent = 'Localisation…'; msg.className = '';
     navigator.geolocation.getCurrentPosition(p => {
       pos = { lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4) };
-      document.getElementById('cp').value = '';
       document.getElementById('adr').value = '';
       document.getElementById('sugg').innerHTML = '';
       document.getElementById('geo').style.display = 'flex';
@@ -434,7 +433,6 @@ if (hasDOM) {
     if (!f || !f.geometry) return;
     const [lon, lat] = f.geometry.coordinates;
     pos = { lat: +lat.toFixed(4), lon: +lon.toFixed(4) };
-    document.getElementById('cp').value = '';
     document.getElementById('adr').value = f.properties.label;
     document.getElementById('sugg').innerHTML = '';
     document.getElementById('geo').style.display = 'flex';
