@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, project, priceColor, markerClass, shouldUseLeaflet, choosePlan, leafletPlan,
-  stationsHTML, planSVG, errorText, previsionLine,
+  esc, pf, pf2, markerClass,
+  stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
 const station = (over = {}) => ({
@@ -36,24 +36,6 @@ describe('formats de prix FR', () => {
   it('pf2 : 2 décimales à virgule, signe conservé', () => {
     expect(pf2(4.016)).toBe('4,02');
     expect(pf2(-1.5)).toBe('-1,50');
-  });
-});
-
-describe('projection lat/lon vers le plan', () => {
-  it('dx=(lon-lon0)*cos(lat0)*111.32, dy=(lat-lat0)*110.57', () => {
-    const { dx, dy } = project(48.01, 2.01, { la: 48, lo: 2 });
-    expect(dx).toBeCloseTo(0.01 * Math.cos(48 * Math.PI / 180) * 111.32, 3);
-    expect(dy).toBeCloseTo(1.1057, 3);
-  });
-  it('centre sur lui-même = 0,0', () => {
-    expect(project(48, 2, { la: 48, lo: 2 })).toEqual({ dx: 0, dy: 0 });
-  });
-});
-
-describe('couleur prix', () => {
-  it('min -> vert (teinte 140), max -> rouge (teinte 0)', () => {
-    expect(priceColor(1, 1, 2)).toContain('140');
-    expect(priceColor(2, 1, 2)).toContain('0');
   });
 });
 
@@ -94,33 +76,6 @@ describe('stationsHTML', () => {
     expect(html).toContain('1,789');
     expect(html).toContain('90,50');
     expect(html).toContain('2,5 km');
-  });
-});
-
-describe('planSVG', () => {
-  it('sans point -> null (plan masqué)', () => {
-    expect(planSVG([], { R: 1, mn: 0, mx: 0, sel: null, centerLabel: 'Toi' })).toBeNull();
-  });
-  it('positionne les pastilles (dx=1, R=2 -> cx=290)', () => {
-    const svg = planSVG(
-      [{ _i: 0, dx: 1, dy: 0, prix: 1.5, adresse: 'A' }],
-      { R: 2, mn: 1.5, mx: 1.5, sel: null, centerLabel: 'Toi' },
-    );
-    expect(svg).toContain('cx="290.0"');
-    expect(svg).toContain('Toi');
-  });
-});
-
-describe('shouldUseLeaflet', () => {
-  const ok = { mode: 'carte', hasL: true, tilesOK: true, online: true };
-  it('carte si tout est disponible', () => {
-    expect(shouldUseLeaflet(ok)).toBe(true);
-  });
-  it('repli SVG si Leaflet, tuiles ou réseau manque', () => {
-    expect(shouldUseLeaflet({ ...ok, mode: 'plan' })).toBe(false);
-    expect(shouldUseLeaflet({ ...ok, hasL: false })).toBe(false);
-    expect(shouldUseLeaflet({ ...ok, tilesOK: false })).toBe(false);
-    expect(shouldUseLeaflet({ ...ok, online: false })).toBe(false);
   });
 });
 
@@ -200,14 +155,5 @@ describe('leafletPlan', () => {
     expect(p.bounds).toBeNull();
     expect(p.center).toEqual([48.95, 2.6]);
     expect(p.zoom).toBeLessThanOrEqual(16);
-  });
-});
-
-describe('choosePlan', () => {
-  it('tout ok -> leaflet', () => {
-    expect(choosePlan({ mode: 'carte', hasL: true, tilesOK: true, online: true })).toBe('leaflet');
-  });
-  it('Leaflet absent -> repli svg', () => {
-    expect(choosePlan({ mode: 'carte', hasL: false, tilesOK: true, online: true })).toBe('svg');
   });
 });

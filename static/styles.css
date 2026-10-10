@@ -86,7 +86,6 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .mk1{border-color:#84cc16}.mk2{border-color:#f59e0b}.mk3{border-color:#f97316}.mk4{border-color:#dc2626}
 .mk.sel{box-shadow:0 0 0 3px var(--acc)}
 #map{height:340px;border-radius:10px;border:1px solid var(--line);margin:16px 0;background:var(--card);padding:8px;overflow:hidden}
-#map svg{width:100%;height:100%;display:block}
 .st.sel{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc)}
 .detail{margin-top:8px;border-top:1px solid var(--line);padding-top:8px;display:grid;gap:8px}
 .fuels{display:grid;gap:4px}

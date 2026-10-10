@@ -8,30 +8,10 @@ export const pf = n => Number(n).toFixed(3).replace('.', ',');
 export const pf2 = n => Number(n).toFixed(2).replace('.', ',');
 
 // ---------- plan SVG ----------
-export function project(lat, lon, c0) {
-  const cos = Math.cos(c0.la * Math.PI / 180);
-  return { dx: (lon - c0.lo) * cos * 111.32, dy: (lat - c0.la) * 110.57 };
-}
-export function priceColor(p, mn, mx) {
-  return `hsl(${Math.round(140 - 140 * (p - mn) / ((mx - mn) || 1))} 70% 42%)`;
-}
 export function markerClass(p, mn, mx) {
   if (!(mx > mn)) return 'mk0';
   return 'mk' + Math.min(4, Math.round(4 * (p - mn) / (mx - mn)));
 }
-export function planSVG(P, { R, mn, mx, sel, centerLabel }) {
-  if (!P.length) return null;
-  const km = r => (R * r).toFixed(R * r < 10 ? 1 : 0).replace('.', ',');
-  const ring = k => `<circle cx="200" cy="200" r="${180 * k}" fill="none" stroke="var(--line)" stroke-dasharray="3 4"/><text x="${200 + 180 * k * .707 + 3}" y="${200 - 180 * k * .707}" font-size="10" fill="var(--mut)">${km(k)} km</text>`;
-  let m = `<svg viewBox="0 0 400 400" role="img" aria-label="Plan des stations">${ring(1 / 3)}${ring(2 / 3)}${ring(1)}<circle cx="200" cy="200" r="6" fill="var(--ink)"/><text x="208" y="204" font-size="11" fill="var(--ink)">${centerLabel}</text>`;
-  [...P].reverse().forEach(x => {
-    const px = (200 + x.dx / R * 180).toFixed(1), py = (200 - x.dy / R * 180).toFixed(1);
-    const best = x.prix === mn, on = sel === x._i;
-    m += `<circle data-id="${x._i}" tabindex="0" role="button" aria-label="${esc(x.adresse) || 'Station'}, ${pf(x.prix)} euros le litre" cx="${px}" cy="${py}" r="${best || on ? 10 : 7}" fill="${priceColor(x.prix, mn, mx)}" stroke="${on ? 'var(--acc)' : best ? 'var(--ink)' : 'var(--card)'}" stroke-width="${on || best ? 3 : 1.5}"/>`;
-  });
-  return m + '</svg>';
-}
-
 // ---------- rendu ----------
 export const affBadge = a => {
   const c = { fluide: 'fl', 'modérée': 'mo', dense: 'de', 'fermé': 'fe' }[a.niveau] || 'fe';
@@ -95,7 +75,7 @@ const hasDOM = typeof document !== 'undefined' && typeof document.getElementById
 let f = null, msg = null, box = null, cards = null;
 let fa = null, msga = null, alBox = null;
 let pos = null, lastStations = [];
-let sort = 'tot', mode = 'plan', lastS = null, lastT = null, lastMax = 0, lastL = 50;
+let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50;
 let sel = null, ctl = null, req = 0;
 const jd = async r => { try { return await r.json() } catch { return {} } };
 
@@ -125,12 +105,6 @@ function renderList() {
   }));
   drawPlan(arr);
 }
-export function shouldUseLeaflet({ mode, hasL, tilesOK, online }) {
-  return mode === 'carte' && !!hasL && tilesOK !== false && online !== false;
-}
-export function choosePlan(o) {
-  return shouldUseLeaflet(o) ? 'leaflet' : 'svg';
-}
 export const PLAN_ZOOM_SINGLE = 15, PLAN_ZOOM_EMPTY = 14;
 export function leafletPlan(arr, { sel, pos }) {
   const pts = arr.map((x, i) => ({ x, i })).filter(o => o.x.lat != null && o.x.lon != null);
@@ -154,30 +128,19 @@ export function leafletPlan(arr, { sel, pos }) {
 let tilesOK = true, tileErrs = 0;
 function showMapWarn() {
   const w = document.getElementById('mapwarn');
-  w.textContent = 'Carte indisponible (hors ligne ou tuiles injoignables) — plan schématique affiché.';
+  w.textContent = 'Carte indisponible (hors ligne ou tuiles injoignables).';
   w.hidden = false;
 }
 function drawPlan(arr) {
   const online = typeof navigator !== 'undefined' ? navigator.onLine : undefined;
   const hasL = typeof window !== 'undefined' && !!window.L;
-  if (choosePlan({ mode, hasL, tilesOK, online }) === 'leaflet') {
-    document.getElementById('mapwarn').hidden = true;
-    drawLeaflet(arr); return;
+  if (!hasL || online === false) {
+    showMapWarn();
+    document.getElementById('map').hidden = true;
+    return;
   }
-  if (mode === 'carte') showMapWarn(); else document.getElementById('mapwarn').hidden = true;
-  const el = document.getElementById('map');
-  const pts = arr.map((x, i) => ({ ...x, _i: i })).filter(x => x.lat != null && x.lon != null);
-  if (!pts.length) { el.hidden = true; return; }
-  el.hidden = false;
-  const c0 = pos ? { la: pos.lat, lo: pos.lon } : { la: pts.reduce((a, x) => a + x.lat, 0) / pts.length, lo: pts.reduce((a, x) => a + x.lon, 0) / pts.length };
-  const P = pts.map(x => ({ ...x, ...project(x.lat, x.lon, c0) }));
-  const R = Math.max(...P.map(x => Math.hypot(x.dx, x.dy)), 0.5);
-  const pr = P.map(x => x.prix), mn = Math.min(...pr), mx = Math.max(...pr);
-  el.innerHTML = planSVG(P, { R, mn, mx, sel, centerLabel: pos ? 'Toi' : 'Zone' });
-  el.querySelectorAll('circle[data-id]').forEach(o => {
-    o.addEventListener('click', () => selectStation(+o.dataset.id));
-    o.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectStation(+o.dataset.id); } });
-  });
+  if (!tilesOK) showMapWarn(); else document.getElementById('mapwarn').hidden = true;
+  drawLeaflet(arr);
 }
 function selectStation(i) {
   sel = i;
@@ -192,7 +155,7 @@ function selectStation(i) {
 }
 let lmap = null, llayer = null, lmarkers = [];
 function focusMarker(i) {
-  if (mode !== 'carte' || !lmap || typeof window === 'undefined' || !window.L) return;
+  if (!lmap || typeof window === 'undefined' || !window.L) return;
   const f = lmarkers.find(o => o.i === i);
   if (!f) return;
   const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -290,11 +253,6 @@ if (hasDOM) {
     sort = b.dataset.s;
     document.querySelectorAll('#sortTabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
     if (lastS) renderList();
-  }));
-  document.querySelectorAll('#mapTabs button').forEach(b => b.addEventListener('click', () => {
-    mode = b.dataset.m;
-    document.querySelectorAll('#mapTabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
-    if (lastS) drawPlan(sortedStations());
   }));
 
   f.addEventListener('submit', async e => {
