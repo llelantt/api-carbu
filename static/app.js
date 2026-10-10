@@ -252,17 +252,27 @@ if (hasDOM) {
     msg.textContent = 'Localisation…'; msg.className = '';
     navigator.geolocation.getCurrentPosition(p => {
       pos = { lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4) };
-      document.getElementById('cp').disabled = true;
+      document.getElementById('cp').value = '';
+      document.getElementById('adr').value = '';
+      document.getElementById('sugg').innerHTML = '';
       document.getElementById('geo').style.display = 'flex';
       msg.textContent = 'Position détectée, clique Rechercher.'; msg.className = '';
     }, () => { msg.textContent = 'Position refusée ou indisponible.'; msg.className = 'err'; });
   });
   document.getElementById('unclear').addEventListener('click', e => {
     e.preventDefault();
-    pos = null; document.getElementById('cp').disabled = false;
+    pos = null;
     document.getElementById('geo').style.display = 'none';
     document.getElementById('adr').value = '';
     document.getElementById('sugg').innerHTML = '';
+  });
+  document.getElementById('cp').addEventListener('input', () => {
+    if (pos) {
+      pos = null;
+      document.getElementById('geo').style.display = 'none';
+      document.getElementById('adr').value = '';
+      document.getElementById('sugg').innerHTML = '';
+    }
   });
   let sugT = null, sugCtl = null, lastFs = [];
   const renderSugg = fs => {
@@ -276,7 +286,7 @@ if (hasDOM) {
     if (!f || !f.geometry) return;
     const [lon, lat] = f.geometry.coordinates;
     pos = { lat: +lat.toFixed(4), lon: +lon.toFixed(4) };
-    document.getElementById('cp').disabled = true;
+    document.getElementById('cp').value = '';
     document.getElementById('adr').value = f.properties.label;
     document.getElementById('sugg').innerHTML = '';
     document.getElementById('geo').style.display = 'flex';
@@ -287,7 +297,6 @@ if (hasDOM) {
     clearTimeout(sugT);
     if (pos) {
       pos = null;
-      document.getElementById('cp').disabled = false;
       document.getElementById('geo').style.display = 'none';
     }
     if (sugCtl) sugCtl.abort();
