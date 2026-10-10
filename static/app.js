@@ -330,7 +330,7 @@ export function renderList() {
     const x = lastShown[+b.dataset.fav];
     if (!x) return;
     const l = loadFavs();
-    toggleFav(l, { id: x.id, cp: x.cp, label: x.enseigne || x.nom || x.adresse });
+    toggleFav(l, { id: x.id, cp: x.cp, enseigne: x.enseigne || x.nom || null, adresse: x.adresse, ville: x.ville, lat: x.lat, lon: x.lon });
     saveFavs(l);
     const on = isFav(l, x.id);
     b.textContent = on ? '★' : '☆';
@@ -339,25 +339,32 @@ export function renderList() {
   }));
   drawPlan(shown);
 }
+export function favToStation(f) {
+  return {
+    adresse: f.adresse || null, ville: f.ville || null,
+    lat: f.lat ?? null, lon: f.lon ?? null,
+    enseigne: f.enseigne || f.label || null,
+  };
+}
 export function renderFavs() {
   const bx = (typeof document !== 'undefined' && document.getElementById('favs')) || null;
   if (!bx) return;
   const l = loadFavs();
-  bx.innerHTML = l.length ? l.map((f, i) => `<div class="st" data-cpgo="${esc(f.cp || '')}"><div class="top"><b>${esc(f.label) || 'Station'} · ${esc(f.cp || '')}</b><button type="button" class="icon-btn" data-unfav="${i}">✕</button></div></div>`).join('') : '<span class="addr">Aucun favori.</span>';
+  bx.innerHTML = l.length ? l.map((f, i) => `<div class="st" data-favi="${i}" tabindex="0" role="button"><div class="top"><b>${esc(f.enseigne || f.label || f.adresse) || 'Station'}${f.cp ? ' · ' + esc(f.cp) : ''}</b><button type="button" class="icon-btn" data-unfav="${i}">✕</button></div></div>`).join('') : '<span class="addr">Aucun favori.</span>';
   bx.querySelectorAll('[data-unfav]').forEach(b => b.addEventListener('click', () => {
     const ll = loadFavs(); ll.splice(+b.dataset.unfav, 1); saveFavs(ll); renderFavs();
     if (lastS) renderList();
   }));
-  bx.querySelectorAll('[data-cpgo]').forEach(el => el.addEventListener('click', e => {
-    if (e.target.closest('button')) return;
-    if (typeof document === 'undefined' || !f) return;
-    document.getElementById('cp').value = el.dataset.cpgo || '';
-    pos = null;
-    document.getElementById('geo').style.display = 'none';
-    document.getElementById('adr').value = '';
-    document.getElementById('sugg').innerHTML = '';
-    f.requestSubmit();
-  }));
+  bx.querySelectorAll('[data-favi]').forEach(el => {
+    const open = () => { const f = loadFavs()[+el.dataset.favi]; if (f) openSheet(favToStation(f), el); };
+    el.addEventListener('click', e => { if (e.target.closest('button')) return; open(); });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        if (e.target.closest('button')) return;
+        e.preventDefault(); open();
+      }
+    });
+  });
 }
 export function hideClosed() {
   const el = typeof document !== 'undefined' && document.getElementById('hideClosed');

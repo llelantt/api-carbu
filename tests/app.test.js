@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
   sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple, trendHTML, autoDetourParams,
-  detourBannerHTML, sameStationHTML, wireDetourClick, osrmTableURL, applyRoadKm,
+  detourBannerHTML, sameStationHTML, wireDetourClick, osrmTableURL, applyRoadKm, favToStation,
   toggleFav, isFav, loadFavs, saveFavs, renderFavs,
   renderList, setTestState, initSheet, loadHideClosed, saveHideClosed,
   stationsHTML, errorText, previsionLine, leafletPlan,
@@ -660,6 +660,18 @@ describe('favoris', () => {
     saveFavs([{ id: '1', cp: '75001', label: 'Total' }]);
     renderFavs();
     expect(document.getElementById('favs').textContent).toContain('Total');
+    saveFavs([]);
+  });
+  it('clic favori -> panneau Y aller', () => {
+    document.body.innerHTML = '<div id="favs"></div><div id="sheet" hidden><div id="sheet-card"></div></div>';
+    saveFavs([]);
+    saveFavs([{ id: '1', cp: '75001', enseigne: 'TotalX', adresse: 'Rue X', ville: 'V', lat: 48.9, lon: 2.6 }]);
+    renderFavs();
+    document.querySelector('#favs [data-favi]').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.getElementById('sheet').hidden).toBe(false);
+    expect(document.getElementById('sheet-title').textContent).toContain('TotalX');
+    const hrefs = [...document.querySelectorAll('#sheet-card a')].map(a => a.getAttribute('href'));
+    expect(hrefs[0]).toContain('ll=48.9,2.6');
     saveFavs([]);
   });
 });
