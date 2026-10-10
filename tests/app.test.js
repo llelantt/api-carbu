@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
-  sheetLinks, openSheet, closeSheet,
+  sheetLinks, openSheet, closeSheet, validCoords, navItems,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -319,5 +319,33 @@ describe('panneau Y aller', () => {
     const h = sheetLinks(station());
     expect((h.match(/<a /g) || []).length).toBe(3);
     expect(h).toContain('target="_blank"');
+  });
+});
+
+describe('liens navigation', () => {
+  it('coordonnées valides -> LAT,LON', () => {
+    expect(validCoords(48.9, 2.6)).toBe(true);
+    expect(validCoords('48.9', 2.6)).toBe(false);
+    expect(validCoords(NaN, 2.6)).toBe(false);
+    expect(validCoords(null, 2.6)).toBe(false);
+    expect(validCoords(100, 2.6)).toBe(false);
+    expect(validCoords(48.9, 200)).toBe(false);
+  });
+  it('formats officiels avec coordonnées', () => {
+    const h = sheetLinks(station({ lat: 48.9, lon: 2.6 }));
+    expect(h).toContain('https://waze.com/ul?ll=48.9,2.6&navigate=yes');
+    expect(h).toContain('https://www.google.com/maps/dir/?api=1&destination=48.9,2.6');
+    expect(h).toContain('https://maps.apple.com/?daddr=48.9,2.6&dirflg=d');
+    expect(h).toContain('rel="noopener noreferrer"');
+  });
+  it('sans coordonnées -> adresse encodée', () => {
+    const h = sheetLinks(station({ lat: null, lon: null, adresse: '20 Rue Gambetta', ville: 'Lille' }));
+    expect(h).toContain(encodeURIComponent('20 Rue Gambetta Lille'));
+    expect(h).toContain('dirflg=d');
+  });
+  it('ni coordonnées ni adresse -> options désactivées', () => {
+    const h = sheetLinks(station({ lat: null, lon: null, adresse: null, ville: null }));
+    expect(h).not.toContain('<a ');
+    expect((h.match(/aria-disabled="true"/g) || []).length).toBe(3);
   });
 });

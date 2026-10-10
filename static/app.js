@@ -36,17 +36,35 @@ export const affBadge = a => {
     : '';
   return `<span role="img" aria-label="Station ${stateLabel}${affLabel}">${st}${aff}</span>`;
 };
-export const navUrls = x => {
-  const dest = (x.lat != null && x.lon != null) ? `${x.lat},${x.lon}` : encodeURIComponent(`${x.adresse || ''} ${x.ville || ''}`);
-  return {
-    Waze: `https://waze.com/ul?ll=${dest}&navigate=yes`,
-    'Google Maps': `https://www.google.com/maps/dir/?api=1&destination=${dest}`,
-    Plans: `https://maps.apple.com/?daddr=${dest}`,
-  };
+export const validCoords = (lat, lon) =>
+  typeof lat === 'number' && typeof lon === 'number' && Number.isFinite(lat) && Number.isFinite(lon)
+  && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180;
+export const navItems = x => {
+  const names = ['Waze', 'Google Maps', 'Plans'];
+  if (validCoords(x.lat, x.lon)) {
+    const ll = `${x.lat},${x.lon}`;
+    return [
+      { name: names[0], href: `https://waze.com/ul?ll=${ll}&navigate=yes` },
+      { name: names[1], href: `https://www.google.com/maps/dir/?api=1&destination=${ll}` },
+      { name: names[2], href: `https://maps.apple.com/?daddr=${ll}&dirflg=d` },
+    ];
+  }
+  const q = [x.adresse, x.ville].filter(Boolean).join(' ').trim();
+  if (!q) return names.map(name => ({ name, href: null }));
+  const dest = encodeURIComponent(q);
+  return [
+    { name: names[0], href: `https://waze.com/ul?q=${dest}&navigate=yes` },
+    { name: names[1], href: `https://www.google.com/maps/dir/?api=1&destination=${dest}` },
+    { name: names[2], href: `https://maps.apple.com/?daddr=${dest}&dirflg=d` },
+  ];
 };
-export const navLinks = x => 'Y aller : ' + Object.entries(navUrls(x)).map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('');
+export const navLink = ({ name, href }) => href
+  ? `<a href="${href}" target="_blank" rel="noopener noreferrer">${name}</a>`
+  : `<span class="off" aria-disabled="true">${name}</span>`;
+export const navUrls = x => Object.fromEntries(navItems(x).filter(i => i.href).map(i => [i.name, i.href]));
+export const navLinks = x => 'Y aller : ' + navItems(x).map(navLink).join('');
 export function sheetLinks(x) {
-  return Object.entries(navUrls(x)).map(([n, u]) => `<a href="${u}" target="_blank" rel="noopener">${n}</a>`).join('');
+  return navItems(x).map(navLink).join('');
 }
 let sheetTrigger = null;
 export function openSheet(x, trigger) {

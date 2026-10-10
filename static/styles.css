@@ -76,6 +76,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .sheet h2{margin:0;font-size:18px}
 .sheet a{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink);font-weight:600;background:var(--bg)}
 .sheet .cancel{width:100%;border-radius:8px}
+.sheet .off,.itin .off{display:flex;align-items:center;min-height:44px;padding:0 12px;border:1px dashed var(--line);border-radius:8px;color:var(--mut);opacity:.6;cursor:not-allowed}
 @media(max-width:560px){
   .sheet-back{align-items:flex-end;justify-content:stretch;padding:0}
   .sheet{border-radius:12px 12px 0 0;max-width:none}
