@@ -126,6 +126,28 @@ export function closeSheet() {
   if (sheetTrigger && sheetTrigger.focus) sheetTrigger.focus();
   sheetTrigger = null;
 }
+export function initSheet() {
+  document.getElementById('sheet').addEventListener('click', e => {
+    if (e.target.id === 'sheet') closeSheet();
+  });
+  document.getElementById('sheet-card').addEventListener('click', e => {
+    if (e.target.closest('a')) closeSheet();
+  });
+  document.getElementById('sheet-card').addEventListener('keydown', e => {
+    if (e.key !== 'Tab') return;
+    const items = [...document.querySelectorAll('#sheet-card a[href], #sheet-card button')];
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('sheet').hidden) closeSheet();
+  });
+}
+export function setTestState({ stations, stats, plein = 50 }) {
+  lastS = stations; lastT = stats; lastMax = stats.max; lastL = plein;
+}
 export const FUEL_ORDER = ['gazole', 'sp95', 'e10', 'sp98', 'e85', 'gplc'];
 export const fuelName = c => ({ gazole: 'Gazole', sp95: 'SP95', e10: 'E10', sp98: 'SP98', e85: 'E85', gplc: 'GPLc' }[c] || c);
 export const fuelsRows = (x, carb = '') => Object.entries(x.carburants || {})
@@ -211,15 +233,16 @@ function sortedStations() {
   else a.sort((x, y) => (x.total_cost ?? 1e9) - (y.total_cost ?? 1e9));
   return a;
 }
-function renderList() {
+export function renderList() {
   const arr = sortedStations(), mn = lastT.min;
-  box.innerHTML = stationsHTML(arr, { mn, mx: lastMax, L: lastL, carb: lastCarb });
-  box.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
+  const bx = box || document.getElementById('stations');
+  bx.innerHTML = stationsHTML(arr, { mn, mx: lastMax, L: lastL, carb: lastCarb });
+  bx.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
     if (e.target.closest('a,button')) return;
     const x = sortedStations()[+el.dataset.i];
     if (x) openSheet(x, el);
   }));
-  box.querySelectorAll('.st').forEach(el => el.addEventListener('keydown', e => {
+  bx.querySelectorAll('.st').forEach(el => el.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       const x = sortedStations()[+el.dataset.i];
@@ -410,23 +433,7 @@ if (hasDOM) {
   document.getElementById('dt').addEventListener('change', e => {
     document.getElementById('dopts').style.display = e.target.checked ? 'flex' : 'none';
   });
-  document.getElementById('sheet').addEventListener('click', e => {
-    if (e.target.id === 'sheet') closeSheet();
-  });
-  document.getElementById('sheet-card').addEventListener('click', e => {
-    if (e.target.closest('a')) closeSheet();
-  });
-  document.getElementById('sheet-card').addEventListener('keydown', e => {
-    if (e.key !== 'Tab') return;
-    const items = [...document.querySelectorAll('#sheet-card a[href], #sheet-card button')];
-    if (!items.length) return;
-    const first = items[0], last = items[items.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  });
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && !document.getElementById('sheet').hidden) closeSheet();
-  });
+  initSheet();
   document.querySelectorAll('#sortTabs button').forEach(b => b.addEventListener('click', () => {
     sort = b.dataset.s;
     document.querySelectorAll('#sortTabs button').forEach(x => x.setAttribute('aria-pressed', x === b));

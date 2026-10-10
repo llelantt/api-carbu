@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
   sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple,
+  renderList, setTestState, initSheet,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -388,5 +389,72 @@ describe('copie adresse', () => {
     delete window.navigator.clipboard;
     await copyAddr('x');
     expect(document.getElementById('copy-msg').textContent).toContain('Copie impossible');
+  });
+});
+
+describe('interactions carte/panneau', () => {
+  const ui = (stations) => {
+    document.body.innerHTML = `
+      <div id="stations"></div><div id="map" hidden></div><p id="mapwarn" hidden></p>
+      <div id="sheet" hidden><div id="sheet-card"></div></div>`;
+    initSheet();
+    setTestState({
+      stations: stations || [
+        station({ enseigne: 'TotalX', lat: 48.9, lon: 2.6 }),
+        station({ prix: 1.9 }),
+        station({ prix: 2.0 }),
+      ],
+      stats: { min: 1.789, max: 2.0 },
+      plein: 50,
+    });
+    renderList();
+  };
+  it('clic sur une carte ouvre le panneau', () => {
+    ui();
+    document.querySelector('.st').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.getElementById('sheet').hidden).toBe(false);
+    expect(document.getElementById('sheet-title').textContent).toContain('TotalX');
+  });
+  it('touche Entrée ouvre le panneau', () => {
+    ui();
+    document.querySelector('.st').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(document.getElementById('sheet').hidden).toBe(false);
+  });
+  it('Échap ferme et rend le focus à la carte', () => {
+    ui();
+    const card = document.querySelector('.st');
+    card.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.activeElement.tagName).toBe('A');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(document.getElementById('sheet').hidden).toBe(true);
+    expect(document.activeElement).toBe(card);
+  });
+  it('liens avec les bons href pour des coordonnées', () => {
+    ui();
+    document.querySelector('.st').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const hrefs = [...document.querySelectorAll('#sheet-card a')].map(a => a.getAttribute('href'));
+    expect(hrefs).toHaveLength(3);
+    expect(hrefs[0]).toBe('https://waze.com/ul?ll=48.9,2.6&navigate=yes');
+    expect(hrefs[1]).toBe('https://www.google.com/maps/dir/?api=1&destination=48.9,2.6');
+    expect(hrefs[2]).toBe('https://maps.apple.com/?daddr=48.9,2.6&dirflg=d');
+  });
+  it('coordonnées invalides -> options désactivées', () => {
+    ui([station({ lat: '48.9', lon: 2.6, adresse: null, ville: null })]);
+    document.querySelector('.st').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.querySelectorAll('#sheet-card a')).toHaveLength(0);
+    expect(document.querySelectorAll('#sheet-card [aria-disabled="true"]').length).toBeGreaterThanOrEqual(3);
+  });
+  it('nom avec HTML affiché comme texte', () => {
+    ui([station({ enseigne: '<b>Total</b>' })]);
+    document.querySelector('.st').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    const h2 = document.querySelector('#sheet-title');
+    expect(h2.textContent).toContain('<b>Total</b>');
+    expect(h2.querySelector('b')).toBeNull();
+  });
+  it('clic sur un élément interactif n’ouvre pas', () => {
+    ui();
+    document.querySelector('.st').insertAdjacentHTML('beforeend', '<a href="https://example.com">x</a>');
+    document.querySelector('.st a').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(document.getElementById('sheet').hidden).toBe(true);
   });
 });
