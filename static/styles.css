@@ -1,4 +1,8 @@
 /* Système de design repris de la maquette MVP : tokens, clair/sombre auto, cartes, boutons, pastilles. */
+@font-face{font-family:Barlow;font-style:normal;font-weight:400;font-display:swap;src:url(/static/fonts/barlow-latin-400-normal.woff2) format('woff2')}
+@font-face{font-family:Barlow;font-style:normal;font-weight:600;font-display:swap;src:url(/static/fonts/barlow-latin-600-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:500;font-display:swap;src:url(/static/fonts/barlow-semi-condensed-latin-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Barlow Semi Condensed';font-style:normal;font-weight:700;font-display:swap;src:url(/static/fonts/barlow-semi-condensed-latin-700-normal.woff2) format('woff2')}
 :root{
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);
