@@ -84,8 +84,16 @@ let sort = 'tot', lastS = null, lastT = null, lastMax = 0, lastL = 50, lastCarb 
 let sel = null, ctl = null, req = 0;
 const jd = async r => { try { return await r.json() } catch { return {} } };
 
-const zoneP = () => pos ? `lat=${pos.lat}&lon=${pos.lon}&dist=${document.getElementById('dist').value}` : `cp=${encodeURIComponent(document.getElementById('cp').value.trim())}`;
-const zoneL = () => pos ? `autour de moi (${document.getElementById('dist').value} km)` : document.getElementById('cp').value.trim();
+const getDist = () => document.getElementById('dist').value;
+const zoneP = () => {
+  const z = pos ? `lat=${pos.lat}&lon=${pos.lon}` : `cp=${encodeURIComponent(document.getElementById('cp').value.trim())}`;
+  const d = getDist();
+  return z + ((d !== '' && d != null) ? `&dist=${encodeURIComponent(d)}` : '');
+};
+const zoneL = () => {
+  const d = getDist();
+  return pos ? `autour de moi (${d || 10} km)` : document.getElementById('cp').value.trim() + (d ? ` · rayon ${d} km` : '');
+};
 
 function sortedStations() {
   const a = [...lastS];
@@ -267,7 +275,8 @@ if (hasDOM) {
       kp = document.getElementById('kp').value, kl = document.getElementById('kl').value,
       co = document.getElementById('co').value || '6.5', vo = document.getElementById('vo').value || '50';
     if (!pos && !document.getElementById('cp').value.trim()) { msg.textContent = 'Indique un code postal ou localise-toi.'; msg.className = 'err'; return; }
-    if (pos) { const dd = +document.getElementById('dist').value; if (!(dd > 0 && dd <= 100)) { msg.textContent = 'Rayon invalide : entre 1 et 100 km.'; msg.className = 'err'; return; } }
+    const dd = getDist();
+    if (dd !== '' && !(+dd > 0 && +dd <= 100)) { msg.textContent = 'Rayon invalide : entre 1 et 100 km.'; msg.className = 'err'; return; }
     if (ctl) ctl.abort();
     ctl = new AbortController(); const my = ++req, sig = ctl.signal;
     const btn = f.querySelector('button[type="submit"]'); btn.disabled = true;

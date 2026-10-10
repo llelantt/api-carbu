@@ -59,11 +59,11 @@ def haversine(lat1, lon1, lat2, lon2):
         return None
 
 
-async def fetch_stations(cp, carburant, lat=None, lon=None, dist=10):
+async def fetch_stations(cp, carburant, lat=None, lon=None, dist=None):
     carb = carburant.lower()
     prix_col, maj_col = f"{carb}_prix", f"{carb}_maj"
     geo = lat is not None and lon is not None
-    where = (f'within_distance(geom, geom\'POINT({lon} {lat})\', {dist}km)'
+    where = (f'within_distance(geom, geom\'POINT({lon} {lat})\', {dist or 10}km)'
              if geo else f'cp="{cp}"')
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
@@ -118,6 +118,16 @@ async def fetch_stations(cp, carburant, lat=None, lon=None, dist=10):
                                          if geo and g.get("lat") is not None else None),
                          "affluence": calc_affluence(ouv, x.get("pop"), len(serv))})
     stations.sort(key=lambda s: s["prix"])
+    if not geo and dist:
+        cc = [(s["lat"], s["lon"]) for s in stations if s.get("lat") is not None]
+        if cc:
+            cla = sum(p[0] for p in cc) / len(cc)
+            clo = sum(p[1] for p in cc) / len(cc)
+            for s in stations:
+                s["distance_km"] = (haversine(cla, clo, s.get("lat"), s.get("lon"))
+                                    if s.get("lat") is not None else None)
+            stations = [s for s in stations
+                        if s["distance_km"] is not None and s["distance_km"] <= dist]
     return stations, ruptures, None
 
 
@@ -272,6 +282,7 @@ def api_root():
             "GET /api": "cette aide",
             "GET /stations?cp=77270&carburant=gazole": "stations triées + fiabilité + affluence (ouvert, niveau estimé)",
             "GET /stations?lat=48.95&lon=2.60&dist=10&carburant=gazole": "idem autour d'une position (géolocalisation)",
+            "GET /stations?cp=77270&dist=5&carburant=gazole": "idem rayon autour du centre du code postal",
             "GET /stations?cp=77270&carburant=gazole&km_proche=2&km_loin=10": "idem + verdict détour (facultatif)",
             "GET /stations/moins-chere?cp=77270&carburant=gazole": "station la moins chère",
             "GET /stats?cp=77270&carburant=gazole": "moyenne, min, max, nombre de stations",
@@ -289,7 +300,7 @@ async def stations(
     carburant: str = Query(...),
     lat: float | None = Query(None, ge=-90, le=90),
     lon: float | None = Query(None, ge=-180, le=180),
-    dist: float = Query(10, gt=0, le=100, description="rayon en km"),
+    dist: float | None = Query(None, gt=0, le=100, description="rayon en km"),
     km_proche: float | None = Query(None, ge=0, description="Km A/R station proche (cher) — facultatif"),
     km_loin: float | None = Query(None, ge=0, description="Km A/R station loin (pas cher) — facultatif"),
     conso: float = Query(6.5, gt=0),
@@ -334,7 +345,7 @@ async def moins_chere(
     cp: str | None = Query(None), carburant: str = Query(...),
     lat: float | None = Query(None, ge=-90, le=90),
     lon: float | None = Query(None, ge=-180, le=180),
-    dist: float = Query(10, gt=0, le=100),
+    dist: float | None = Query(None, gt=0, le=100),
 ):
     err = check_params(cp, carburant, lat, lon)
     if err:
@@ -352,7 +363,7 @@ async def stats(
     cp: str | None = Query(None), carburant: str = Query(...),
     lat: float | None = Query(None, ge=-90, le=90),
     lon: float | None = Query(None, ge=-180, le=180),
-    dist: float = Query(10, gt=0, le=100),
+    dist: float | None = Query(None, gt=0, le=100),
 ):
     err = check_params(cp, carburant, lat, lon)
     if err:
@@ -390,7 +401,7 @@ async def prevision(
     cp: str | None = Query(None), carburant: str = Query(...),
     lat: float | None = Query(None, ge=-90, le=90),
     lon: float | None = Query(None, ge=-180, le=180),
-    dist: float = Query(10, gt=0, le=100),
+    dist: float | None = Query(None, gt=0, le=100),
 ):
     err = check_params(cp, carburant, lat, lon)
     if err:
@@ -411,7 +422,7 @@ async def alertes_check(
     cp: str | None = Query(None), carburant: str = Query(...), seuil: float = Query(..., gt=0),
     lat: float | None = Query(None, ge=-90, le=90),
     lon: float | None = Query(None, ge=-180, le=180),
-    dist: float = Query(10, gt=0, le=100),
+    dist: float | None = Query(None, gt=0, le=100),
 ):
     err = check_params(cp, carburant, lat, lon)
     if err:
