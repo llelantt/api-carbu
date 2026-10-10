@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge,
+  esc, pf, pf2, ruptureLabel, fuelName, fuelsRows, markerClass, suggestHTML, zoneSentence, affBadge, openState,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -78,6 +78,16 @@ describe('fuelsRows', () => {
   it('surligne le carburant cherché', () => {
     expect(fuelsRows(x, 'e85')).toContain('fuel cur');
     expect(fuelsRows(x, '')).not.toContain('cur');
+  });
+});
+
+describe('openState', () => {
+  it('quatre états, même source pour badge et compteur', () => {
+    expect(openState({ ouvert: true, is_24h: true })).toBe('24h');
+    expect(openState({ ouvert: true })).toBe('open');
+    expect(openState({ ouvert: false })).toBe('closed');
+    expect(openState({ ouvert: null })).toBe('unknown');
+    expect(openState(undefined)).toBe('unknown');
   });
 });
 

@@ -156,32 +156,61 @@ def jours_depuis(maj):
         return None
 
 
+def _parse_hhmm(s):
+    try:
+        h, m = str(s).replace(":", ".").replace("h", ".").replace("H", ".").split(".")
+        return int(h) + int(m) / 60
+    except (ValueError, IndexError, AttributeError):
+        return None
+
+
+def _slots_of(jour):
+    if not jour or jour.get("@ferme") == "1":
+        return None
+    slots = jour.get("horaire")
+    slots = slots if isinstance(slots, list) else ([slots] if slots else [])
+    out = []
+    for s in slots:
+        if not isinstance(s, dict):
+            continue
+        o, f = _parse_hhmm(s.get("@ouverture")), _parse_hhmm(s.get("@fermeture"))
+        if o is not None and f is not None:
+            out.append((o, f))
+    return out
+
+
 def ouvert_actuellement(horaires, automate, now=None):
-    now = now or datetime.now(ZoneInfo("Europe/Paris"))
+    """True / False / None (horaires inexploitables), toujours en Europe/Paris."""
+    paris = ZoneInfo("Europe/Paris")
+    if now is None:
+        now = datetime.now(paris)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=paris)
+    else:
+        now = now.astimezone(paris)
     if (automate or "").strip().lower() in ("1", "oui", "yes", "true"):
         return True
     try:
         import json
         h = json.loads(horaires) if isinstance(horaires, str) else horaires
-        jour = next(j for j in h.get("jour", []) if str(j.get("@id")) == str(now.isoweekday()))
-        if jour.get("@ferme") == "1":
-            return False
-        slots = jour.get("horaire")
-        if not slots:
-            return None
-        slots = slots if isinstance(slots, list) else [slots]
-        t = now.hour + now.minute / 60
-        for s in slots:
-            try:
-                oh, om = str(s["@ouverture"]).replace(":", ".").split(".")
-                fh, fm = str(s["@fermeture"]).replace(":", ".").split(".")
-                if int(oh) + int(om) / 60 <= t < int(fh) + int(fm) / 60:
-                    return True
-            except (KeyError, ValueError, IndexError):
-                continue
-        return False
-    except (ValueError, TypeError, StopIteration, AttributeError):
+        jours = (h or {}).get("jour", []) or []
+    except (ValueError, TypeError, AttributeError):
         return None
+    if not jours:
+        return None
+    t, wd = now.hour + now.minute / 60, now.isoweekday()
+    day = lambda d: next((j for j in jours if str(j.get("@id")) == str(d)), None)  # noqa: E731
+    if t < 12:  # débordement de la veille (fermeture après minuit)
+        for o, f in _slots_of(day(wd - 1 or 7)) or []:
+            if f <= o and t < f:
+                return True
+    ts = _slots_of(day(wd))
+    if not ts:
+        return False
+    for o, f in ts:
+        if (f <= o and t >= o) or (f > o and o <= t < f):
+            return True
+    return False
 
 
 def calc_affluence(ouvert, pop, nb_services, now=None):

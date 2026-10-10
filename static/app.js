@@ -14,16 +14,22 @@ export function markerClass(p, mn, mx) {
   return 'mk' + Math.min(4, Math.round(4 * (p - mn) / (mx - mn)));
 }
 // ---------- rendu ----------
+export const openState = a => {
+  if (!a) return 'unknown';
+  if (a.is_24h) return '24h';
+  if (a.ouvert === true) return 'open';
+  if (a.ouvert === false) return 'closed';
+  return 'unknown';
+};
 export const affBadge = a => {
-  const st = a.is_24h
-    ? '<span class="badge fl">Ouvert 24h/24</span>'
-    : a.ouvert === true
-      ? '<span class="badge fl">Ouvert</span>'
-      : a.ouvert === false
-        ? '<span class="badge fe">Fermé</span>'
-        : '<span class="badge fe">Horaires inconnus</span>';
-  if (a.niveau === 'fermé') return st;
-  const c = { fluide: 'fl', 'modérée': 'mo', dense: 'de' }[a.niveau] || 'fe';
+  const st = {
+    '24h': '<span class="badge fl">Ouvert 24h/24</span>',
+    open: '<span class="badge fl">Ouvert</span>',
+    closed: '<span class="badge fe">Fermé</span>',
+    unknown: '<span class="badge fe">Horaires inconnus</span>',
+  }[openState(a)];
+  if (a && a.niveau === 'fermé') return st;
+  const c = { fluide: 'fl', 'modérée': 'mo', dense: 'de' }[(a && a.niveau) || ''] || 'fe';
   return `${st}<span class="badge ${c}">Affluence ${a.niveau}</span>`;
 };
 export const navLinks = x => {
@@ -378,7 +384,7 @@ if (hasDOM) {
       msg.textContent = zoneSentence(t.nombre, s.position.dist, lieu, carb);
       if (s.stations.length === 1) msg.textContent += ' · Peu de résultats : essaie un rayon plus grand ou un autre carburant.';
       const max = t.max, per = s.prix_perimes || 0, rup = (s.ruptures || []).length;
-      const ouv = s.stations.filter(x => x.affluence && x.affluence.ouvert).length;
+      const ouv = s.stations.filter(x => { const o = openState(x.affluence); return o === 'open' || o === '24h'; }).length;
       if (per || rup) msg.textContent += ` · ${per ? per + ' prix de + de 7 j' : ''}${per && rup ? ' · ' : ''}${rup ? rup + ' station(s) en rupture' : ''}`;
       msg.textContent += ` · ${ouv}/${s.stations.length} ouverte(s)`;
       if (s.detour) {
