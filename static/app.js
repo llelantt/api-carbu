@@ -117,6 +117,7 @@ export function openSheet(x, trigger) {
     + `<p class="addr" id="copy-msg" hidden></p>`
     + `<button type="button" class="cancel" id="sheet-cancel">Annuler</button>`;
   document.getElementById('sheet').hidden = false;
+  document.body.style.overflow = 'hidden';
   sheetTrigger = trigger || null;
   document.getElementById('sheet-cancel').addEventListener('click', closeSheet);
   const cb = card.querySelector('.copy');
@@ -126,6 +127,7 @@ export function openSheet(x, trigger) {
 }
 export function closeSheet() {
   document.getElementById('sheet').hidden = true;
+  document.body.style.overflow = '';
   if (sheetTrigger && sheetTrigger.focus) sheetTrigger.focus();
   sheetTrigger = null;
 }
@@ -456,7 +458,7 @@ if (hasDOM) {
     ctl = new AbortController(); const my = ++req, sig = ctl.signal;
     const btn = f.querySelector('button[type="submit"]'); btn.disabled = true;
     box.innerHTML = ''; cards.hidden = true; document.getElementById('detour').hidden = true; sel = null;
-    document.getElementById('sheet').hidden = true;
+    document.getElementById('sheet').hidden = true; document.body.style.overflow = '';
     tilesOK = true; tileErrs = 0; document.getElementById('mapwarn').hidden = true;
     document.getElementById('notif').hidden = true; document.getElementById('prev').hidden = true;
     document.getElementById('map').hidden = true;

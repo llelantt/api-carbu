@@ -316,6 +316,13 @@ describe('panneau Y aller', () => {
     closeSheet();
     expect(document.getElementById('sheet').hidden).toBe(true);
   });
+  it('verrouille le défilement à l’ouverture, libère à la fermeture', () => {
+    setup();
+    openSheet(station(), null);
+    expect(document.body.style.overflow).toBe('hidden');
+    closeSheet();
+    expect(document.body.style.overflow).toBe('');
+  });
   it('sans station ou données vides -> ne s’ouvre pas', () => {
     setup();
     openSheet(null, null);
