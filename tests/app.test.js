@@ -749,3 +749,32 @@ describe('courbe historique', () => {
     expect(xs[1] - xs[0]).toBeLessThan(xs[2] - xs[1]);
   });
 });
+
+describe('graphique et tendance (jsdom)', () => {
+  const pt = (date, prix) => ({ date, prix });
+  it('1 relevé -> pas de graphique, message insuffisant', () => {
+    const h = curve([pt('2026-10-09', 1.8)]);
+    expect(h).not.toContain('<svg');
+    expect(h).toContain('Historique insuffisant (1 relevé)');
+  });
+  it('5 relevés sur 5 jours -> 5 points, hauteur 140px', async () => {
+    const h = ['07', '08', '09', '10', '11'].map((d, i) => pt(`2026-10-${d}`, 1.8 + i * 0.01));
+    const svg = curve(h);
+    expect((svg.match(/<circle/g) || []).length).toBe(5);
+    expect(svg).toContain('viewBox="0 0 300 140"');
+    const fs = await import('node:fs');
+    const css = fs.readFileSync('static/styles.css', 'utf8');
+    expect(css).toMatch(/\.curve svg\{[^}]*height:140px/);
+  });
+  it('tendance masquée à 1 relevé, Stable si identiques, jamais +0,000', () => {
+    expect(trendHTML({ tendance: 'hausse', variation: 0.01, points: 1 })).toBe('');
+    expect(trendHTML({ tendance: 'stable', variation: 0, points: 5 })).toContain('Stable sur 7 j');
+    for (const t of [
+      { tendance: 'hausse', variation: 0, points: 5 },
+      { tendance: 'baisse', variation: -0.0, points: 5 },
+      { tendance: 'stable', variation: 0.5, points: 5 },
+    ]) {
+      expect(trendHTML(t)).not.toContain('+0,000');
+    }
+  });
+});
