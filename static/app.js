@@ -178,18 +178,26 @@ export const fuelName = c => ({ gazole: 'Gazole', sp95: 'SP95', e10: 'E10', sp98
 export const fuelsRows = (x, carb = '') => Object.entries(x.carburants || {})
   .sort(([a], [b]) => FUEL_ORDER.indexOf(a) - FUEL_ORDER.indexOf(b))
   .map(([c, f]) => `<div class="fuel${c === carb ? ' cur' : ''}"><span>${fuelName(c)}</span><span>${f.prix != null ? `<span class="led sm">${pf(f.prix)} €</span>` : '<span class="dash">—</span>'}</span><span>${f.perime ? `<span class="badge old">Prix ancien (${f.jours} j)</span>` : ''}${f.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(f.rupture))}</span>` : ''}</span></div>`).join('');
-export function curve(h) {
+export function curve(h, W = 300) {
   h = h || [];
   const spanH = h.length > 1 ? (new Date(h[h.length - 1].date) - new Date(h[0].date)) / 3600000 : 0;
   if (h.length < 3 || spanH < 24) return `<p class="addr">Historique insuffisant (${h.length} relevé${h.length > 1 ? 's' : ''}) : il se construira avec le temps.</p>`;
-  const W = 300, H = 90, P = 10;
-  const ys = h.map(p => p.prix), mn = Math.min(...ys), mx = Math.max(...ys), rg = (mx - mn) || 0.001;
-  const X = i => P + i * (W - 2 * P) / (h.length - 1), Y = v => H - P - (v - mn) / rg * (H - 2 * P);
-  const pts = h.map((p, i) => `${X(i).toFixed(1)},${Y(p.prix).toFixed(1)}`).join(' ');
-  const d0 = h[0].date.slice(5, 10).replace('-', '/'), d1 = h[h.length - 1].date.slice(5, 10).replace('-', '/');
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Historique des prix"><polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2"/>${h.map((p, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(p.prix).toFixed(1)}" r="3" fill="var(--acc)"/>`).join('')}<text x="${P}" y="${H - 1}" font-size="9" fill="var(--mut)">${d0}</text><text x="${W - P}" y="${H - 1}" font-size="9" text-anchor="end" fill="var(--mut)">${d1}</text><text x="${W - P}" y="12" font-size="9" text-anchor="end" fill="var(--mut)">${pf(mx)} €</text></svg>`;
+  const H = 140, L = 8, R = 54, T = 8, B = 20;
+  const ts = h.map(p => new Date(p.date).getTime());
+  const t0 = ts[0], t1 = ts[ts.length - 1];
+  let mn = Math.min(...h.map(p => p.prix)), mx = Math.max(...h.map(p => p.prix));
+  if (!(mx > mn)) { mn -= 0.01; mx += 0.01; }
+  const rg = mx - mn;
+  const X = t => L + ((t - t0) / ((t1 - t0) || 1)) * (W - L - R);
+  const Y = v => T + (1 - (v - mn) / rg) * (H - T - B);
+  const pts = h.map((p, i) => `${X(ts[i]).toFixed(1)},${Y(p.prix).toFixed(1)}`).join(' ');
+  const prices = [mn, (mn + mx) / 2, mx].map(v => `<text x="${W - 4}" y="${(Y(v) + 4).toFixed(1)}" font-size="12" text-anchor="end" fill="var(--mut)">${pf(v)} €</text>`).join('');
+  const n = h.length;
+  const idxs = [...new Set(n <= 4 ? h.map((_, i) => i) : [0, Math.round((n - 1) / 3), Math.round((n - 1) * 2 / 3), n - 1])];
+  const dates = idxs.map(i => `<text x="${X(ts[i]).toFixed(1)}" y="${H - 5}" font-size="12" text-anchor="middle" fill="var(--mut)">${h[i].date.slice(5, 10).replace('-', '/')}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Historique des prix"><polyline points="${pts}" fill="none" stroke="var(--acc)" stroke-width="2"/>${h.map((p, i) => `<circle cx="${X(ts[i]).toFixed(1)}" cy="${Y(p.prix).toFixed(1)}" r="3" fill="var(--acc)"/>`).join('')}${prices}${dates}</svg>`;
 }
-export function stationsHTML(arr, { mn, mx, L, carb = '', badgeMin = mn, favs = [] }) {
+export function stationsHTML(arr, { mn, mx, L, carb = '', badgeMin = mn, favs = [], curveW = 300 }) {
   return arr.map((x, i) => `
 <div class="st" data-i="${i}" tabindex="0" role="button"><div class="top"><span class="rk">${i + 1}</span><span class="prix">${pf(x.prix)}<small>€/L</small></span>
 ${badgeMin != null && x.prix === badgeMin ? '<span class="badge">Meilleur prix</span>' : ''}<button type="button" class="fav" data-fav="${i}" aria-pressed="${favs.includes(x.id)}" aria-label="Ajouter aux favoris">${favs.includes(x.id) ? '★' : '☆'}</button></div>
@@ -201,7 +209,7 @@ ${badgeMin != null && x.prix === badgeMin ? '<span class="badge">Meilleur prix</
 <div class="detail" hidden>
 <div class="fuels">${fuelsRows(x, carb)}</div>
 ${(x.services || []).length ? `<div class="fiab">${x.services.map(s => `<span class="badge">${esc(s)}</span>`).join('')}</div>` : ''}
-<div class="curve">${curve(x.histo)}</div>
+<div class="curve">${curve(x.histo, curveW)}</div>
 </div>
 <div class="go">Y aller ›</div>
 </div>`).join('');
@@ -313,7 +321,7 @@ export function renderList() {
   lastShown = shown;
   document.getElementById('closedmsg').hidden = !(arr.length && arr.every(x => openState(x.affluence) === 'closed'));
   const bx = box || document.getElementById('stations');
-  bx.innerHTML = stationsHTML(shown, { mn, mx: lastMax, L: lastL, carb: lastCarb, badgeMin, favs: loadFavs().map(f => f.id) });
+  bx.innerHTML = stationsHTML(shown, { mn, mx: lastMax, L: lastL, carb: lastCarb, badgeMin, favs: loadFavs().map(f => f.id), curveW: bx.clientWidth || 300 });
   bx.querySelectorAll('.st').forEach(el => el.addEventListener('click', e => {
     if (e.target.closest('a,button')) return;
     const x = lastShown[+el.dataset.i];

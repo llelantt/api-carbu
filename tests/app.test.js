@@ -720,4 +720,22 @@ describe('courbe historique', () => {
     const h = [pt('2026-10-07', 1.8), pt('2026-10-08', 1.79), pt('2026-10-09', 1.81)];
     expect(curve(h)).toContain('<svg');
   });
+  it('140px, textes 12px, repères limités, pas détirement', () => {
+    const h = [pt('2026-10-01', 1.8), pt('2026-10-05', 1.79), pt('2026-10-09', 1.81)];
+    const svg = curve(h, 400);
+    expect(svg).toContain('viewBox="0 0 400 140"');
+    expect(svg).not.toContain('preserveAspectRatio="none"');
+    expect(svg).not.toContain('font-size="9"');
+    expect((svg.match(/<text/g) || []).length).toBeLessThanOrEqual(7);
+  });
+  it('prix identiques -> ligne centrée', () => {
+    const h = [pt('2026-10-07', 1.8), pt('2026-10-08', 1.8), pt('2026-10-09', 1.8)];
+    const ys = [...curve(h).matchAll(/cy="([\d.]+)"/g)].map(m => m[1]);
+    expect(new Set(ys).size).toBe(1);
+  });
+  it('points placés aux dates réelles', () => {
+    const h = [pt('2026-10-01', 1.8), pt('2026-10-02', 1.79), pt('2026-10-10', 1.81)];
+    const xs = [...curve(h).matchAll(/cx="([\d.]+)"/g)].map(m => +m[1]);
+    expect(xs[1] - xs[0]).toBeLessThan(xs[2] - xs[1]);
+  });
 });
