@@ -606,7 +606,7 @@ if (hasDOM) {
     const carb = document.getElementById('carb').value,
       useD = document.getElementById('dt').checked,
       kp = document.getElementById('kp').value, kl = document.getElementById('kl').value,
-      co = document.getElementById('co').value || '6.5', vo = document.getElementById('vo').value || '50';
+      co = document.getElementById('co').value, vo = document.getElementById('vo').value;
     if (!pos && !document.getElementById('cp').value.trim()) { msg.textContent = 'Indique un code postal ou localise-toi.'; msg.className = 'err'; return; }
     const dd = getDist();
     if (dd !== '' && !(+dd > 0 && +dd <= 100)) { msg.textContent = 'Rayon invalide : entre 1 et 100 km.'; msg.className = 'err'; return; }
@@ -653,6 +653,12 @@ if (hasDOM) {
       msg.textContent += ` · ${ouv}/${s.stations.length} ouverte(s)`;
       async function showDetour() {
         const el = document.getElementById('detour');
+        const cn = +co, pl = +vo;
+        if (!(cn > 0) || !(pl > 0)) {
+          el.hidden = false;
+          el.innerHTML = '<span class="addr">Renseigne ta conso et ton plein pour calculer le détour.</span>';
+          return;
+        }
         let q = null, lo = null, hi = null;
         if (pos) {
           const auto = autoDetourParams(lastS);
@@ -683,6 +689,8 @@ if (hasDOM) {
       }
       async function updateRoad() {
         if (!pos) return;
+        const cn = +co;
+        if (!(cn > 0)) return;
         const idx = [], coords = [];
         lastS.forEach((x, i) => {
           if (x.lat != null && x.lon != null && x.distance_km != null) { idx.push(i); coords.push({ lat: x.lat, lon: x.lon }); }
@@ -699,7 +707,7 @@ if (hasDOM) {
           if (my !== req) return;
           const road = new Array(lastS.length).fill(null);
           idx.forEach((si, k) => { road[si] = legs[k]; });
-          applyRoadKm(lastS, road, lastL, +co || 6.5);
+          applyRoadKm(lastS, road, lastL, cn);
           renderList();
         } catch { /* on garde les distances à vol d'oiseau */ }
       }
