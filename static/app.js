@@ -180,7 +180,8 @@ export const fuelsRows = (x, carb = '') => Object.entries(x.carburants || {})
   .map(([c, f]) => `<div class="fuel${c === carb ? ' cur' : ''}"><span>${fuelName(c)}</span><span>${f.prix != null ? `<span class="led sm">${pf(f.prix)} €</span>` : '<span class="dash">—</span>'}</span><span>${f.perime ? `<span class="badge old">Prix ancien (${f.jours} j)</span>` : ''}${f.rupture ? `<span class="badge rup">Rupture ${esc(ruptureLabel(f.rupture))}</span>` : ''}</span></div>`).join('');
 export function curve(h) {
   h = h || [];
-  if (h.length < 2) return '<p class="addr">Historique insuffisant : reviens après quelques recherches.</p>';
+  const spanH = h.length > 1 ? (new Date(h[h.length - 1].date) - new Date(h[0].date)) / 3600000 : 0;
+  if (h.length < 3 || spanH < 24) return `<p class="addr">Historique insuffisant (${h.length} relevé${h.length > 1 ? 's' : ''}) : il se construira avec le temps.</p>`;
   const W = 300, H = 90, P = 10;
   const ys = h.map(p => p.prix), mn = Math.min(...ys), mx = Math.max(...ys), rg = (mx - mn) || 0.001;
   const X = i => P + i * (W - 2 * P) / (h.length - 1), Y = v => H - P - (v - mn) / rg * (H - 2 * P);

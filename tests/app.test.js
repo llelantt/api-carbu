@@ -4,7 +4,7 @@ import {
   sheetLinks, openSheet, closeSheet, validCoords, navItems, copyAddr, copyButton, isApple, trendHTML, autoDetourParams,
   detourBannerHTML, sameStationHTML, wireDetourClick, osrmTableURL, applyRoadKm, favToStation,
   toggleFav, isFav, loadFavs, saveFavs, renderFavs,
-  renderList, setTestState, initSheet, loadHideClosed, saveHideClosed, initDefaultMap,
+  renderList, setTestState, initSheet, loadHideClosed, saveHideClosed, initDefaultMap, curve,
   stationsHTML, errorText, previsionLine, leafletPlan,
 } from '../static/app.js';
 
@@ -700,5 +700,24 @@ describe('carte par défaut', () => {
     expect(calls.mapOpts.scrollWheelZoom).toBe(false);
     delete window.L;
     delete window.matchMedia;
+  });
+});
+
+describe('courbe historique', () => {
+  const pt = (date, prix) => ({ date, prix });
+  it('moins de 3 relevés -> message discret avec compteur', () => {
+    expect(curve([])).toContain('Historique insuffisant (0 relevé)');
+    expect(curve([pt('2026-10-09', 1.8)])).toContain('Historique insuffisant (1 relevé)');
+    expect(curve([pt('2026-10-08', 1.8), pt('2026-10-09', 1.79)])).toContain('Historique insuffisant (2 relevés)');
+  });
+  it('moins de 24 h couvertes -> message, pas de graphique', () => {
+    const h = [pt('2026-10-09', 1.8), pt('2026-10-09', 1.79), pt('2026-10-09', 1.81)];
+    expect(h).toHaveLength(3);
+    expect(curve(h)).toContain('il se construira avec le temps');
+    expect(curve(h)).not.toContain('<svg');
+  });
+  it('3 relevés sur 48 h -> graphique', () => {
+    const h = [pt('2026-10-07', 1.8), pt('2026-10-08', 1.79), pt('2026-10-09', 1.81)];
+    expect(curve(h)).toContain('<svg');
   });
 });
