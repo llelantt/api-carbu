@@ -71,7 +71,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .itin a{flex:1;min-width:90px;display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;padding:8px;border-radius:999px;background:var(--bg);color:var(--ink);border:1px solid var(--line)}
 .st{cursor:pointer}
 .st:hover{border-color:var(--acc)}
-.go{text-align:right;font-size:.8rem;color:var(--mut);margin-top:6px}
+.go{text-align:right;font-size:.8rem;color:var(--mut);margin-top:16px;padding-bottom:4px}
 .fav{background:none;border:0;font-size:18px;line-height:1;padding:0 4px;color:var(--ink)}
 #favs{display:grid;gap:8px;margin:0 0 10px}
 #favs .st{cursor:pointer}
@@ -126,7 +126,7 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,.s
 .fuels{display:grid}
 .fuel{height:40px}
 .fuel+.fuel{border-top:1px solid var(--line)}
-.fuel.cur{box-shadow:inset 3px 0 0 var(--acc)}
+.fuel.cur{box-shadow:inset 3px 0 0 var(--acc);padding-left:12px}
 .fuel{display:grid;grid-template-columns:minmax(0,1fr) 6.5rem 9.5rem;align-items:center;column-gap:12px;font-size:.9rem;font-weight:600}
 .fuel>span:nth-child(2){text-align:right;font-variant-numeric:tabular-nums}
 .fuel .led{min-width:5.2rem}
