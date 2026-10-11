@@ -283,7 +283,13 @@ def get_station_histo(sid, carburant):
 
 def calc_prevision(cp, carburant, lat=None, lon=None):
     pts = load_histo().get(zone_key(cp, carburant, lat, lon), [])[-7:]
-    if len(pts) < 2:
+    span_j = 0
+    if len(pts) >= 2:
+        try:
+            span_j = (date.fromisoformat(pts[-1]["date"]) - date.fromisoformat(pts[0]["date"])).days
+        except ValueError:
+            span_j = 0
+    if len(pts) < 2 or span_j < 1:
         return {"tendance": "inconnu", "variation": 0.0, "points": len(pts),
                 "conseil": "Pas encore assez d'historique, reviens demain."}
     n = len(pts)
@@ -293,7 +299,9 @@ def calc_prevision(cp, carburant, lat=None, lon=None):
     slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / (sum((x - mx) ** 2 for x in xs) or 1)
     slope = round(slope, 4)
     variation = round(ys[-1] - ys[0], 3)
-    if slope >= 0.002:
+    if variation == 0:
+        tendance, conseil = "stable", "Prix stables, fais le plein sans pression."
+    elif slope >= 0.002:
         tendance, conseil = "hausse", "Fais le plein aujourd'hui, les prix montent."
     elif slope <= -0.002:
         tendance, conseil = "baisse", "Tu peux attendre, les prix baissent."

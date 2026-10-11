@@ -222,12 +222,14 @@ export function zoneSentence(nombre, dist, lieu, carb) {
 }
 export function trendHTML(t) {
   if (!t || t.tendance === 'inconnu' || t.points < 2) return '';
-  const up = t.tendance === 'hausse', flat = t.tendance === 'stable';
-  const cls = up ? 'up' : (flat ? 'flat' : 'down');
-  const arrow = up ? '↑' : (flat ? '→' : '↓');
+  const r = Math.round((t.variation || 0) * 1000) / 1000;
+  if (t.tendance === 'stable' || r === 0) {
+    return '<span class="trend flat" role="img" aria-label="prix stables sur 7 jours">Stable sur 7 j</span>';
+  }
+  const up = t.tendance === 'hausse';
   const v = Math.abs(t.variation);
-  const label = flat ? 'prix stables sur 7 jours' : `prix en ${up ? 'hausse' : 'baisse'} de ${pf(v)} € sur 7 jours`;
-  return `<span class="trend ${cls}" role="img" aria-label="${label}">${arrow} ${t.variation >= 0 ? '+' : '−'}${pf(v)} € sur 7 j</span>`;
+  const label = `prix en ${up ? 'hausse' : 'baisse'} de ${pf(v)} € sur 7 jours`;
+  return `<span class="trend ${up ? 'up' : 'down'}" role="img" aria-label="${label}">${up ? '↑' : '↓'} ${t.variation >= 0 ? '+' : '−'}${pf(v)} € sur 7 j</span>`;
 }
 export function detourBannerHTML(d, lo, hi, kmLo) {
   return `<b>${d.vaut_le_coup ? '✅' : '❌'} ${esc(d.message)}</b><br><span class="addr">${esc(lo.adresse)} · ${esc(lo.ville)} · à ${String(kmLo).replace('.', ',')} km · Économie vs ${esc(hi.adresse)} : <span class="led sm">${d.economy_vs_nearest >= 0 ? '+' : ''}${pf2(d.economy_vs_nearest)} €</span></span><div class="go">Y aller ›</div>`;
@@ -254,6 +256,9 @@ export function autoDetourParams(stations) {
 }
 export function previsionLine(p) {
   if (p.tendance === 'inconnu' || p.points < 2) return "Tendance 7 j : — · pas encore assez d'historique";
+  if (p.tendance === 'stable' || Math.round((p.variation || 0) * 1000) / 1000 === 0) {
+    return `Tendance 7 j : stable · ${p.points} relevé(s)`;
+  }
   return `Tendance 7 j : ${p.tendance} (${p.variation >= 0 ? '+' : ''}${pf(p.variation)} €) · ${p.points} relevé(s)`;
 }
 export function errorText(status, body) {

@@ -205,6 +205,12 @@ describe('previsionLine', () => {
     const t = previsionLine({ tendance: 'hausse', variation: 0.012, points: 5 });
     expect(t).toContain('+0,012 €');
   });
+  it('stable -> sans montant, jamais +0,000', () => {
+    const t = previsionLine({ tendance: 'stable', variation: 0, points: 5 });
+    expect(t).toContain('stable');
+    expect(t).not.toContain('€');
+    expect(previsionLine({ tendance: 'hausse', variation: 0.0004, points: 5 })).toContain('stable');
+  });
 });
 
 describe('errorText', () => {
@@ -576,6 +582,10 @@ describe('trendHTML', () => {
     const up = trendHTML({ tendance: 'hausse', variation: 0.02, points: 5 });
     expect(up).toContain('↑');
     expect(up).toContain('trend up');
+  });
+  it('stable et zéro -> Stable sur 7 j, jamais +0,000', () => {
+    expect(trendHTML({ tendance: 'stable', variation: 0, points: 5 })).toContain('Stable sur 7 j');
+    expect(trendHTML({ tendance: 'hausse', variation: 0.0004, points: 5 })).toContain('Stable sur 7 j');
   });
 });
 
